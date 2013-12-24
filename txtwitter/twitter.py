@@ -4,8 +4,8 @@ from urllib import urlencode
 
 import oauth2
 from twisted.internet import reactor
-# from twisted.protocols.basic import LineOnlyReceiver
-# from twisted.protocols.policies import TimeoutMixin
+from twisted.protocols.basic import LineOnlyReceiver
+from twisted.protocols.policies import TimeoutMixin
 from twisted.web.client import Agent, FileBodyProducer, readBody
 from twisted.web.http_headers import Headers
 
@@ -32,6 +32,15 @@ def make_auth_header(token, consumer, method, url, parameters=None):
     # Extract the header value and turn it into bytes.
     [auth_value] = req.to_header().values()
     return auth_value.encode('ascii')
+
+
+class TwitterStreamProtocol(LineOnlyReceiver, TimeoutMixin):
+    def __init__(self, delegate):
+        self.delegate = delegate
+
+    def lineReceived(self, line):
+        if line:
+            self.delegate(json.loads(line))
 
 
 class TwitterClient(object):
@@ -64,8 +73,7 @@ class TwitterClient(object):
             headers.addRawHeader(
                 'Content-Type', 'application/x-www-form-urlencoded')
 
-        d = self._agent.request(method, uri, headers, body_producer)
-        return d.addCallback(self._parse_response)
+        return self._agent.request(method, uri, headers, body_producer)
 
     def _parse_response(self, response):
         # TODO: Better exception than this.
@@ -80,10 +88,16 @@ class TwitterClient(object):
 
     def _get_api(self, resource, parameters):
         uri = self._make_uri(self._api_url_base, resource, parameters)
-        return self._make_request('GET', uri)
+        d = self._make_request('GET', uri)
+        return d.addCallback(self._parse_response)
 
     def _post_api(self, resource, parameters):
         uri = self._make_uri(self._api_url_base, resource)
+        d = self._make_request('POST', uri, parameters)
+        return d.addCallback(self._parse_response)
+
+    def _post_stream(self, resource, parameters):
+        uri = self._make_uri(self._stream_url_base, resource)
         return self._make_request('POST', uri, parameters)
 
     def show(self, id):
@@ -91,3 +105,17 @@ class TwitterClient(object):
 
     def update(self, content):
         return self._post_api('statuses/update.json', {'status': content})
+
+    def _deliver_to(self, response, protocol):
+        response.deliverBody(protocol)
+        return response
+
+    def stream_filter(self, delegate, track=None):
+        # TODO: Some kind of reconnecting or service mechanism.
+        params = {}
+        if track is not None:
+            params['track'] = ','.join(track)
+
+        d = self._post_stream('statuses/filter.json', params)
+        d.addCallback(self._deliver_to, TwitterStreamProtocol(delegate))
+        return d
