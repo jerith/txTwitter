@@ -1,0 +1,3 @@
+Twisted
+oauth2
+pyOpenSSL
