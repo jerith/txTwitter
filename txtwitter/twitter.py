@@ -4,10 +4,13 @@ from urllib import urlencode
 
 import oauth2
 from twisted.internet import reactor
-from twisted.protocols.basic import LineOnlyReceiver
-from twisted.protocols.policies import TimeoutMixin
-from twisted.web.client import Agent, FileBodyProducer, readBody
+from twisted.python.failure import Failure
+from twisted.web import error
+from twisted.web.client import (
+    Agent, FileBodyProducer, PartialDownloadError, readBody)
 from twisted.web.http_headers import Headers
+
+from txtwitter.streamservice import TwitterStreamService
 
 
 TWITTER_API_URL = 'https://api.twitter.com/1.1/'
@@ -34,13 +37,19 @@ def make_auth_header(token, consumer, method, url, parameters=None):
     return auth_value.encode('ascii')
 
 
-class TwitterStreamProtocol(LineOnlyReceiver, TimeoutMixin):
-    def __init__(self, delegate):
-        self.delegate = delegate
+def _extract_partial_response(failure):
+    failure.trap(PartialDownloadError)
+    return failure.value.response
 
-    def lineReceived(self, line):
-        if line:
-            self.delegate(json.loads(line))
+
+def _read_body(response):
+    """Read a response body even if there is no content length.
+    """
+    return readBody(response).addErrback(_extract_partial_response)
+
+
+class TwitterAPIError(error.Error):
+    pass
 
 
 class TwitterClient(object):
@@ -73,7 +82,15 @@ class TwitterClient(object):
             headers.addRawHeader(
                 'Content-Type', 'application/x-www-form-urlencoded')
 
-        return self._agent.request(method, uri, headers, body_producer)
+        d = self._agent.request(method, uri, headers, body_producer)
+        return d.addCallback(self._handle_error)
+
+    def _handle_error(self, response):
+        if response.code < 400:
+            return response
+
+        return _read_body(response).addCallback(lambda body: Failure(
+            TwitterAPIError(response.code, response=body)))
 
     def _parse_response(self, response):
         # TODO: Better exception than this.
@@ -116,6 +133,8 @@ class TwitterClient(object):
         if track is not None:
             params['track'] = ','.join(track)
 
-        d = self._post_stream('statuses/filter.json', params)
-        d.addCallback(self._deliver_to, TwitterStreamProtocol(delegate))
-        return d
+        svc = TwitterStreamService(
+            lambda: self._post_stream('statuses/filter.json', params),
+            delegate)
+        svc.startService()
+        return svc
