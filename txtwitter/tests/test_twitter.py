@@ -95,6 +95,19 @@ class TestTwitterClient(TestCase):
         self.assertEqual(resp, response_dict)
 
     @inlineCallbacks
+    def test_show_HTTP_404(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/statuses/show.json'
+        err_dict = {"errors": [
+            {"message": "Sorry, that page does not exist", "code": 34},
+        ]}
+        agent.add_expected_request(
+            'GET', uri, {'id': '123'}, self._resp_json(err_dict, 404))
+        err = yield client.show("123").addErrback(lambda f: f.value)
+        code, _phrase, body = err.args
+        self.assertEqual((404, err_dict), (code, json.loads(body)))
+
+    @inlineCallbacks
     def test_update(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/statuses/update.json'

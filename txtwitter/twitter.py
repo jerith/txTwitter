@@ -44,7 +44,8 @@ def _extract_partial_response(failure):
 
 
 def _read_body(response):
-    """Read a response body even if there is no content length.
+    """
+    Read a response body even if there is no content length.
     """
     return readBody(response).addErrback(_extract_partial_response)
 
