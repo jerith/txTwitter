@@ -15,6 +15,7 @@ from txtwitter.streamservice import TwitterStreamService
 
 TWITTER_API_URL = 'https://api.twitter.com/1.1/'
 TWITTER_STREAM_URL = 'https://stream.twitter.com/1.1/'
+TWITTER_USERSTREAM_URL = 'https://userstream.twitter.com/1.1/'
 
 
 def make_auth_header(token, consumer, method, url, parameters=None):
@@ -53,12 +54,13 @@ class TwitterClient(object):
 
     def __init__(self, token_key, token_secret, consumer_key, consumer_secret,
                  api_url=TWITTER_API_URL, stream_url=TWITTER_STREAM_URL,
-                 agent=None):
+                 userstream_url=TWITTER_USERSTREAM_URL, agent=None):
         self._token = oauth2.Token(key=token_key, secret=token_secret)
         self._consumer = oauth2.Consumer(
             key=consumer_key, secret=consumer_secret)
         self._api_url_base = api_url
         self._stream_url_base = stream_url
+        self._userstream_url_base = userstream_url
         if agent is None:
             agent = Agent(self.reactor)
         self._agent = agent
@@ -113,6 +115,10 @@ class TwitterClient(object):
         uri = self._make_uri(self._stream_url_base, resource)
         return self._make_request('POST', uri, parameters)
 
+    def _get_userstream(self, resource, parameters):
+        uri = self._make_uri(self._userstream_url_base, resource, parameters)
+        return self._make_request('GET', uri)
+
     def show(self, id):
         return self._get_api('statuses/show.json', {'id': id})
 
@@ -124,7 +130,6 @@ class TwitterClient(object):
         return response
 
     def stream_filter(self, delegate, track=None):
-        # TODO: Some kind of reconnecting or service mechanism.
         params = {}
         if track is not None:
             params['track'] = ','.join(track)
@@ -132,5 +137,15 @@ class TwitterClient(object):
         svc = TwitterStreamService(
             lambda: self._post_stream('statuses/filter.json', params),
             delegate)
-        svc.startService()
+        return svc
+
+    def userstream_user(self, delegate, with_='followings'):
+        params = {
+            'stringify_friend_ids': 'true',
+            'with': with_,
+        }
+
+        svc = TwitterStreamService(
+            lambda: self._get_userstream('user.json', params),
+            delegate)
         return svc

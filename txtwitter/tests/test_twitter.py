@@ -119,18 +119,57 @@ class TestTwitterClient(TestCase):
         tweets = []
         svc = client.stream_filter(tweets.append, track=['foo', 'bar'])
         svc.set_connect_callback(connected.callback)
+        svc.startService()
         connected_svc = yield connected
         self.assertIs(svc, connected_svc)
         self.assertEqual(tweets, [])
 
-        stream.deliver_data('{"id_str": "1", "text": "Tweet 1"}\r\n')
+        stream.deliver_data(
+            '{"id_str": "1", "text": "Tweet 1", "user": {}}\r\n')
         self.assertEqual(tweets, [
-            {"id_str": "1", "text": "Tweet 1"},
+            {"id_str": "1", "text": "Tweet 1", "user": {}},
         ])
-        stream.deliver_data('{"id_str": "2", "text": "Tweet 2"}\r\n')
+        stream.deliver_data(
+            '{"id_str": "2", "text": "Tweet 2", "user": {}}\r\n')
         self.assertEqual(tweets, [
-            {"id_str": "1", "text": "Tweet 1"},
-            {"id_str": "2", "text": "Tweet 2"},
+            {"id_str": "1", "text": "Tweet 1", "user": {}},
+            {"id_str": "2", "text": "Tweet 2", "user": {}},
+        ])
+        yield svc.stopService()
+        stream.finished()
+
+    @inlineCallbacks
+    def test_userstream_with_user(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://userstream.twitter.com/1.1/user.json'
+        stream = self._FakeResponse(None)
+        agent.add_expected_request('GET', uri, {
+            'stringify_friend_ids': 'true',
+            'with': 'user',
+        }, stream)
+
+        connected = Deferred()
+        tweets = []
+        svc = client.userstream_user(tweets.append, with_='user')
+        svc.set_connect_callback(connected.callback)
+        svc.startService()
+        connected_svc = yield connected
+        self.assertIs(svc, connected_svc)
+        self.assertEqual(tweets, [])
+
+        stream.deliver_data(
+            '{"friends_str": []}\r\n'
+            '{"id_str": "1", "text": "Tweet 1", "user": {}}\r\n')
+        self.assertEqual(tweets, [
+            {"friends_str": []},
+            {"id_str": "1", "text": "Tweet 1", "user": {}},
+        ])
+        stream.deliver_data(
+            '{"id_str": "2", "text": "Tweet 2", "user": {}}\r\n')
+        self.assertEqual(tweets, [
+            {"friends_str": []},
+            {"id_str": "1", "text": "Tweet 1", "user": {}},
+            {"id_str": "2", "text": "Tweet 2", "user": {}},
         ])
         yield svc.stopService()
         stream.finished()
