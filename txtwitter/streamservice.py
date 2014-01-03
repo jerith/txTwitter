@@ -7,6 +7,8 @@ from twisted.python.failure import Failure
 from twisted.web.client import ResponseDone
 from twisted.web.http import PotentialDataLoss
 
+from txtwitter.error import RateLimitedError, TwitterAPIError
+
 
 class TwitterStreamProtocol(LineOnlyReceiver, TimeoutMixin):
     def __init__(self, service):
@@ -45,35 +47,43 @@ class TwitterStreamService(Service):
            wait and double each attempt. Note that every HTTP 420 received
            increases the time you must wait until rate limiting will no longer
            will be in effect for your account.
+
+    For now, we just do an exponential backoff starting at one second and
+    doubling every time we reconnect (including the first!) to a maximum of ten
+    minutes. For explicit rate limiting, we start at 30 seconds instead of one
+    second.
     """
 
-    # TODO: Reconnections and backoff.
+    RECONNECT_DELAY_INITIAL = 1
+    RECONNECT_DELAY_RATE_LIMIT = 30
+    RECONNECT_DELAY_MULTIPLIER = 2
+    RECONNECT_DELAY_MAX = 60 * 10
+
+    clock = None
 
     _stream_response = None
     _stream_protocol = None
+    _reconnect_delayedcall = None
+
     connect_callback = None
     disconnect_callback = None
+    reconnect_delay = RECONNECT_DELAY_INITIAL
 
     def __init__(self, connect_func, delegate):
         self.connect_func = connect_func
         self.delegate = delegate
 
-    def _setup_stream(self, response):
-        self._stream_response = response
-        self._stream_protocol = TwitterStreamProtocol(self)
-        response.deliverBody(self._stream_protocol)
-        if self.connect_callback is not None:
-            self.connect_callback(self)
-
     def startService(self):
         Service.startService(self)
-        self.connect_func().addCallback(self._setup_stream)
+        self._connect()
 
     def stopService(self):
         Service.stopService(self)
         if self._stream_protocol is not None:
             self._stream_protocol.transport.stopProducing()
-        self.connected.cancel()
+        if self._reconnect_delayedcall is not None:
+            self._reconnect_delayedcall.cancel()
+            self._reconnect_delayedcall = None
 
     def connection_lost(self, reason):
         self._stream_response = None
@@ -82,9 +92,56 @@ class TwitterStreamService(Service):
             reason = Failure(ResponseDone())
         if self.disconnect_callback is not None:
             self.disconnect_callback(self, reason)
+        self._reconnect()
 
     def set_connect_callback(self, callback):
         self.connect_callback = callback
 
     def set_disconnect_callback(self, callback):
         self.disconnect_callback = callback
+
+    def _setup_stream(self, response):
+        if response.code != 200:
+            self._handle_HTTP_error(response)
+            return
+
+        self.reconnect_delay = self.RECONNECT_DELAY_INITIAL
+        self._stream_response = response
+        self._stream_protocol = TwitterStreamProtocol(self)
+        response.deliverBody(self._stream_protocol)
+        if self.connect_callback is not None:
+            self.connect_callback(self)
+
+    def _handle_HTTP_error(self, response):
+        if response.code == 420:
+            # We've been rate-limited.
+            if self.reconnect_delay < self.RECONNECT_DELAY_RATE_LIMIT:
+                self.reconnect_delay = self.RECONNECT_DELAY_RATE_LIMIT
+            self.connection_lost(Failure(RateLimitedError(response.code)))
+        else:
+            # General HTTP error.
+            self.connection_lost(Failure(TwitterAPIError(response.code)))
+
+    def _connect(self):
+        self._reconnect_delayedcall = None
+        self.connect_func().addCallback(self._setup_stream)
+
+    def _reconnect(self):
+        if not self.running:
+            return
+
+        if self.clock is None:
+            from twisted.internet import reactor
+            self.clock = reactor
+
+        self._update_reconnect_delay()
+        self._reconnect_delayedcall = self.clock.callLater(
+            self.reconnect_delay, self._connect)
+
+    def _update_reconnect_delay(self):
+        if self.reconnect_delay < self.RECONNECT_DELAY_INITIAL:
+            self.reconnect_delay = self.RECONNECT_DELAY_INITIAL
+        else:
+            self.reconnect_delay *= self.RECONNECT_DELAY_MULTIPLIER
+        if self.reconnect_delay > self.RECONNECT_DELAY_MAX:
+            self.reconnect_delay = self.RECONNECT_DELAY_MAX

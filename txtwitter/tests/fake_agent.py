@@ -10,6 +10,9 @@ from twisted.web.http import RESPONSES
 class FakeTransport(object):
     disconnecting = False
 
+    def stopProducing(self):
+        pass
+
 
 class FakeResponse(object):
     def __init__(self, body, code=200):

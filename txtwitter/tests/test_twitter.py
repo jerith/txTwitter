@@ -56,6 +56,8 @@ class TestAuthHelpers(TestCase):
 
 
 class TestTwitterClient(TestCase):
+    timeout = 1
+
     def _TwitterClient(self, *args, **kw):
         from txtwitter.twitter import TwitterClient
         return TwitterClient(*args, **kw)
@@ -130,4 +132,5 @@ class TestTwitterClient(TestCase):
             {"id_str": "1", "text": "Tweet 1"},
             {"id_str": "2", "text": "Tweet 2"},
         ])
+        yield svc.stopService()
         stream.finished()

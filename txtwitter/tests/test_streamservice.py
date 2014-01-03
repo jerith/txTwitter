@@ -1,4 +1,5 @@
 from twisted.internet.defer import Deferred
+from twisted.internet.task import Clock
 from twisted.python.failure import Failure
 from twisted.trial.unittest import TestCase
 
@@ -86,3 +87,34 @@ class TestTwitterClient(TestCase):
         failure = Failure(Exception())
         svc.connection_lost(failure)
         self.assertEqual([], self.flushLoggedErrors())
+
+    def test_reconnection_HTTP_500(self):
+        """
+        Reconnecting after an HTTP error should happen with the appropriate
+        delays.
+        """
+        from txtwitter.error import TwitterAPIError
+        d1 = Deferred()
+        d2 = Deferred()
+        connect_deferreds = [d1, d2]
+        called = []
+        svc = self._TwitterStreamService(
+            lambda: connect_deferreds.pop(0), None)
+        svc.set_connect_callback(lambda s: called.append(s))
+        svc.set_disconnect_callback(lambda s, r: called.append(r))
+        svc.clock = Clock()
+        svc.startService()
+        self.assertEqual(called, [])
+
+        d1.callback(self._FakeResponse(None, 500))
+        [failure] = called
+        self.assertEqual(TwitterAPIError, type(failure.value))
+        self.assertEqual(failure.value.args[0], 500)
+        self.assertEqual(svc.reconnect_delay, 2)
+        self.assertNotEqual(svc._reconnect_delayedcall, None)
+
+        svc.clock.advance(2)
+        self.assertEqual(svc._reconnect_delayedcall, None)
+        self.assertEqual(called, [failure])
+        d2.callback(self._FakeResponse(None))
+        self.assertEqual(called, [failure, svc])

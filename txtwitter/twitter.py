@@ -5,11 +5,11 @@ from urllib import urlencode
 import oauth2
 from twisted.internet import reactor
 from twisted.python.failure import Failure
-from twisted.web import error
 from twisted.web.client import (
     Agent, FileBodyProducer, PartialDownloadError, readBody)
 from twisted.web.http_headers import Headers
 
+from txtwitter.error import TwitterAPIError
 from txtwitter.streamservice import TwitterStreamService
 
 
@@ -46,10 +46,6 @@ def _read_body(response):
     """Read a response body even if there is no content length.
     """
     return readBody(response).addErrback(_extract_partial_response)
-
-
-class TwitterAPIError(error.Error):
-    pass
 
 
 class TwitterClient(object):
