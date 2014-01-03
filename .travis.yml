@@ -1,0 +1,11 @@
+language: python
+python:
+  - "2.6"
+  - "2.7"
+install:
+  - "pip install -e requirements.pip --use-wheel"
+  - "pip install coveralls --use-wheel"
+script:
+  - coverage run --source=txtwitter `which trial` txtwitter
+after_success:
+  - coveralls

@@ -1,3 +1,1 @@
-Twisted
-oauth2
-pyOpenSSL
+-e .
