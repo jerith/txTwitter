@@ -384,6 +384,26 @@ class TwitterClient(object):
         set_bool_param(params, 'trim_user', trim_user)
         return self._post_api('statuses/update.json', params)
 
+    def destroy(self, id, trim_user=None):
+        """
+        Destroys the status specified by the ID parameter.
+
+        https://dev.twitter.com/docs/api/1.1/post/statuses/destroy/%3Aid
+
+        :param str id:
+            (*required*) The numerical ID of the desired tweet.
+
+        :param bool trim_user:
+            When set to ``True``, the return value's user object includes only
+            the status author's numerical ID.
+
+        :returns:
+            A tweet dict containing the destroyed tweet.
+        """
+        params = {'id': id}
+        set_bool_param(params, 'trim_user', trim_user)
+        return self._post_api('statuses/destroy.json', params)
+
     def stream_filter(self, delegate, follow=None, track=None, locations=None,
                       stall_warnings=None):
         """

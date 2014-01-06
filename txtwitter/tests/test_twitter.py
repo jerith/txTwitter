@@ -440,6 +440,38 @@ class TestTwitterClient(TestCase):
         self.assertEqual(resp, response_dict)
 
     @inlineCallbacks
+    def test_destroy(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/statuses/destroy.json'
+        response_dict = {
+            # Truncated tweet data.
+            "id_str": "123",
+            "text": "Tweet!",
+        }
+        agent.add_expected_request(
+            'POST', uri, {'id': '123'}, self._resp_json(response_dict))
+        resp = yield client.destroy("123")
+        self.assertEqual(resp, response_dict)
+
+    @inlineCallbacks
+    def test_destroy_all_params(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/statuses/destroy.json'
+        response_dict = {
+            # Truncated tweet data.
+            "id_str": "123",
+            "text": "Tweet!",
+        }
+        expected_params = {
+            'id': '123',
+            'trim_user': 'true',
+        }
+        agent.add_expected_request(
+            'POST', uri, expected_params, self._resp_json(response_dict))
+        resp = yield client.destroy("123", trim_user=True)
+        self.assertEqual(resp, response_dict)
+
+    @inlineCallbacks
     def test_stream_filter_track(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://stream.twitter.com/1.1/statuses/filter.json'
