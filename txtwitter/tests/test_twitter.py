@@ -295,7 +295,7 @@ class TestTwitterClient(TestCase):
         return agent, client
 
     @inlineCallbacks
-    def test_retweets(self):
+    def test_statuses_retweets(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/statuses/retweets.json'
         response_list = [{
@@ -317,11 +317,11 @@ class TestTwitterClient(TestCase):
         }]
         agent.add_expected_request(
             'GET', uri, {'id': '123'}, self._resp_json(response_list))
-        resp = yield client.retweets("123")
+        resp = yield client.statuses_retweets("123")
         self.assertEqual(resp, response_list)
 
     @inlineCallbacks
-    def test_retweets_all_params(self):
+    def test_statuses_retweets_all_params(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/statuses/retweets.json'
         response_list = [{
@@ -348,11 +348,11 @@ class TestTwitterClient(TestCase):
         }
         agent.add_expected_request(
             'GET', uri, expected_params, self._resp_json(response_list))
-        resp = yield client.retweets("123", count=10, trim_user=True)
+        resp = yield client.statuses_retweets("123", count=10, trim_user=True)
         self.assertEqual(resp, response_list)
 
     @inlineCallbacks
-    def test_show(self):
+    def test_statuses_show(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/statuses/show.json'
         response_dict = {
@@ -362,11 +362,11 @@ class TestTwitterClient(TestCase):
         }
         agent.add_expected_request(
             'GET', uri, {'id': '123'}, self._resp_json(response_dict))
-        resp = yield client.show("123")
+        resp = yield client.statuses_show("123")
         self.assertEqual(resp, response_dict)
 
     @inlineCallbacks
-    def test_show_all_params(self):
+    def test_statuses_show_all_params(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/statuses/show.json'
         response_dict = {
@@ -382,13 +382,13 @@ class TestTwitterClient(TestCase):
         }
         agent.add_expected_request(
             'GET', uri, expected_params, self._resp_json(response_dict))
-        resp = yield client.show(
+        resp = yield client.statuses_show(
             "123", trim_user=True, include_my_retweet=True,
             include_entities=False)
         self.assertEqual(resp, response_dict)
 
     @inlineCallbacks
-    def test_show_HTTP_404(self):
+    def test_statuses_show_HTTP_404(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/statuses/show.json'
         err_dict = {"errors": [
@@ -396,12 +396,12 @@ class TestTwitterClient(TestCase):
         ]}
         agent.add_expected_request(
             'GET', uri, {'id': '123'}, self._resp_json(err_dict, 404))
-        err = yield client.show("123").addErrback(lambda f: f.value)
+        err = yield client.statuses_show("123").addErrback(lambda f: f.value)
         code, _phrase, body = err.args
         self.assertEqual((404, err_dict), (code, json.loads(body)))
 
     @inlineCallbacks
-    def test_update(self):
+    def test_statuses_update(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/statuses/update.json'
         response_dict = {
@@ -411,11 +411,11 @@ class TestTwitterClient(TestCase):
         }
         agent.add_expected_request(
             'POST', uri, {'status': 'Tweet!'}, self._resp_json(response_dict))
-        resp = yield client.update("Tweet!")
+        resp = yield client.statuses_update("Tweet!")
         self.assertEqual(resp, response_dict)
 
     @inlineCallbacks
-    def test_update_all_params(self):
+    def test_statuses_update_all_params(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/statuses/update.json'
         response_dict = {
@@ -434,13 +434,13 @@ class TestTwitterClient(TestCase):
         }
         agent.add_expected_request(
             'POST', uri, expected_params, self._resp_json(response_dict))
-        resp = yield client.update(
+        resp = yield client.statuses_update(
             "Tweet!", in_reply_to_status_id="122", lat=-33.93, long=18.42,
             place_id='abc123', display_coordinates=True, trim_user=True)
         self.assertEqual(resp, response_dict)
 
     @inlineCallbacks
-    def test_destroy(self):
+    def test_statuses_destroy(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/statuses/destroy.json'
         response_dict = {
@@ -450,11 +450,11 @@ class TestTwitterClient(TestCase):
         }
         agent.add_expected_request(
             'POST', uri, {'id': '123'}, self._resp_json(response_dict))
-        resp = yield client.destroy("123")
+        resp = yield client.statuses_destroy("123")
         self.assertEqual(resp, response_dict)
 
     @inlineCallbacks
-    def test_destroy_all_params(self):
+    def test_statuses_destroy_all_params(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/statuses/destroy.json'
         response_dict = {
@@ -468,7 +468,7 @@ class TestTwitterClient(TestCase):
         }
         agent.add_expected_request(
             'POST', uri, expected_params, self._resp_json(response_dict))
-        resp = yield client.destroy("123", trim_user=True)
+        resp = yield client.statuses_destroy("123", trim_user=True)
         self.assertEqual(resp, response_dict)
 
     @inlineCallbacks

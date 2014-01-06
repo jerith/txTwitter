@@ -267,7 +267,7 @@ class TwitterClient(object):
         uri = self._make_uri(self._userstream_url_base, resource, parameters)
         return self._make_request('GET', uri)
 
-    def retweets(self, id, count=None, trim_user=None):
+    def statuses_retweets(self, id, count=None, trim_user=None):
         """
         Returns a list of the most recent retweets of the Tweet specified by
         the id parameter.
@@ -291,8 +291,8 @@ class TwitterClient(object):
         set_bool_param(params, 'trim_user', trim_user)
         return self._get_api('statuses/retweets.json', params)
 
-    def show(self, id, trim_user=None, include_my_retweet=None,
-             include_entities=None):
+    def statuses_show(self, id, trim_user=None, include_my_retweet=None,
+                      include_entities=None):
         """
         Returns a single Tweet, specified by the id parameter.
 
@@ -322,8 +322,9 @@ class TwitterClient(object):
         set_bool_param(params, 'include_entities', include_entities)
         return self._get_api('statuses/show.json', params)
 
-    def update(self, status, in_reply_to_status_id=None, lat=None, long=None,
-               place_id=None, display_coordinates=None, trim_user=None):
+    def statuses_update(self, status, in_reply_to_status_id=None, lat=None,
+                        long=None, place_id=None, display_coordinates=None,
+                        trim_user=None):
         """
         Posts a tweet.
 
@@ -384,7 +385,7 @@ class TwitterClient(object):
         set_bool_param(params, 'trim_user', trim_user)
         return self._post_api('statuses/update.json', params)
 
-    def destroy(self, id, trim_user=None):
+    def statuses_destroy(self, id, trim_user=None):
         """
         Destroys the status specified by the ID parameter.
 
