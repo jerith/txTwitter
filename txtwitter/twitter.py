@@ -310,8 +310,8 @@ class TwitterClient(object):
         """
         params = {'status': status}
         set_str_param(params, 'in_reply_to_status_id', in_reply_to_status_id)
-        set_float_param(params, 'lat', lat)
-        set_float_param(params, 'long', long)
+        set_float_param(params, 'lat', lat, min=-90, max=90)
+        set_float_param(params, 'long', long, min=-180, max=180)
         set_str_param(params, 'place_id', place_id)
         set_bool_param(params, 'display_coordinates', display_coordinates)
         set_bool_param(params, 'trim_user', trim_user)
