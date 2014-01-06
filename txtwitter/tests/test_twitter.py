@@ -71,6 +71,11 @@ class TestParamHelpers(TestCase):
         from txtwitter.twitter import set_float_param
         return set_float_param
 
+    @property
+    def _set_int_param(self):
+        from txtwitter.twitter import set_int_param
+        return set_int_param
+
     def test_set_bool_param_None(self):
         """
         set_bool_param() should do nothing if the value is ``None``.
@@ -153,7 +158,8 @@ class TestParamHelpers(TestCase):
 
     def test_set_float_param_str(self):
         """
-        set_float_param() should set the param if the value is an int.
+        set_float_param() should set the param if the value is a string
+        representation of a float.
         """
         params = {}
         self._set_float_param(params, 'foo', '42.5')
@@ -198,6 +204,70 @@ class TestParamHelpers(TestCase):
         """
         self.assertRaises(ValueError, self._set_float_param, {}, 'foo', True)
 
+    def test_set_int_param_None(self):
+        """
+        set_int_param() should do nothing if the value is ``None``.
+        """
+        params = {}
+        self._set_int_param(params, 'foo', None)
+        self.assertEqual(params, {})
+
+    def test_set_int_param(self):
+        """
+        set_int_param() should set the param if the value is a int.
+        """
+        params = {}
+        self._set_int_param(params, 'foo', 42)
+        self.assertEqual(params, {'foo': '42'})
+
+    def test_set_int_param_str(self):
+        """
+        set_int_param() should set the param if the value is a string
+        representation of an int.
+        """
+        params = {}
+        self._set_int_param(params, 'foo', '42')
+        self.assertEqual(params, {'foo': '42'})
+
+    def test_set_int_param_min(self):
+        """
+        set_int_param() should raise ValueError if the value is less than the
+        minimum.
+        """
+        self.assertRaises(
+            ValueError, self._set_int_param, {}, 'foo', 42, min=50)
+
+    def test_set_int_param_max(self):
+        """
+        set_int_param() should raise ValueError if the value is greater than
+        the maximum.
+        """
+        self.assertRaises(
+            ValueError, self._set_int_param, {}, 'foo', 42, max=40)
+
+    def test_set_int_param_min_str(self):
+        """
+        set_int_param() should raise ValueError if the value is less than the
+        minimum.
+        """
+        self.assertRaises(
+            ValueError, self._set_int_param, {}, 'foo', '42', min=50)
+
+    def test_set_int_param_max_str(self):
+        """
+        set_int_param() should raise ValueError if the value is greater than
+        the maximum.
+        """
+        self.assertRaises(
+            ValueError, self._set_int_param, {}, 'foo', '42', max=40)
+
+    def test_set_int_param_bad(self):
+        """
+        set_int_param() should raise ValueError if the value is not a int
+        (and cannot be turned into one) or ``None``.
+        """
+        self.assertRaises(ValueError, self._set_int_param, {}, 42.5, True)
+
 
 class TestTwitterClient(TestCase):
     timeout = 1
@@ -223,6 +293,63 @@ class TestTwitterClient(TestCase):
             'token-key', 'token-secret', 'consumer-key', 'consumer-secret',
             agent=agent)
         return agent, client
+
+    @inlineCallbacks
+    def test_retweets(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/statuses/retweets.json'
+        response_list = [{
+            # Truncated tweet data.
+            "id_str": "124",
+            "text": "Tweet!",
+            "retweeted_status": {
+                "id_str": "123",
+                "text": "Tweet!",
+            },
+        }, {
+            # Truncated tweet data.
+            "id_str": "125",
+            "text": "Tweet!",
+            "retweeted_status": {
+                "id_str": "123",
+                "text": "Tweet!",
+            },
+        }]
+        agent.add_expected_request(
+            'GET', uri, {'id': '123'}, self._resp_json(response_list))
+        resp = yield client.retweets("123")
+        self.assertEqual(resp, response_list)
+
+    @inlineCallbacks
+    def test_retweets_all_params(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/statuses/retweets.json'
+        response_list = [{
+            # Truncated tweet data.
+            "id_str": "124",
+            "text": "Tweet!",
+            "retweeted_status": {
+                "id_str": "123",
+                "text": "Tweet!",
+            },
+        }, {
+            # Truncated tweet data.
+            "id_str": "125",
+            "text": "Tweet!",
+            "retweeted_status": {
+                "id_str": "123",
+                "text": "Tweet!",
+            },
+        }]
+        expected_params = {
+            'id': '123',
+            'count': '10',
+            'trim_user': 'true',
+        }
+        agent.add_expected_request(
+            'GET', uri, expected_params, self._resp_json(response_list))
+        resp = yield client.retweets("123", count=10, trim_user=True)
+        self.assertEqual(resp, response_list)
 
     @inlineCallbacks
     def test_show(self):

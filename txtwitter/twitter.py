@@ -148,6 +148,49 @@ def set_float_param(params, name, value, min=None, max=None):
     params[name] = str(value)
 
 
+def set_int_param(params, name, value, min=None, max=None):
+    """
+    Set a int parameter if applicable.
+
+    :param dict params: A dict containing API call parameters.
+
+    :param str name: The name of the parameter to set.
+
+    :param int value:
+        The value of the parameter. If ``None``, the field will not be set. If
+        an instance of a numeric type or a string that can be turned into a
+        ``int``, the relevant field will be set. Any other value will raise a
+        `ValueError`.
+
+    :param int min:
+        If provided, values less than this will raise ``ValueError``.
+
+    :param int max:
+        If provided, values greater than this will raise ``ValueError``.
+
+    :returns: ``None``
+    """
+    if value is None:
+        return
+
+    try:
+        value = int(str(value))
+    except:
+        raise ValueError(
+            "Parameter '%s' must be an integer (or a string representation of"
+            " an integer) or None, got %r." % (name, value))
+    if min is not None and value < min:
+        raise ValueError(
+            "Parameter '%s' must not be less than %r, got %r." % (
+            name, min, value))
+    if max is not None and value > max:
+        raise ValueError(
+            "Parameter '%s' must not be greater than %r, got %r." % (
+            name, min, value))
+
+    params[name] = str(value)
+
+
 class TwitterClient(object):
     """
     TODO: Document this.
@@ -223,6 +266,30 @@ class TwitterClient(object):
     def _get_userstream(self, resource, parameters):
         uri = self._make_uri(self._userstream_url_base, resource, parameters)
         return self._make_request('GET', uri)
+
+    def retweets(self, id, count=None, trim_user=None):
+        """
+        Returns a list of the most recent retweets of the Tweet specified by
+        the id parameter.
+
+        https://dev.twitter.com/docs/api/1.1/get/statuses/retweets/%3Aid
+
+        :param str id:
+            (*required*) The numerical ID of the desired tweet.
+
+        :param int count:
+            The maximum number of retweets to return. (Max 100)
+
+        :param bool trim_user:
+            When set to ``True``, the tweet's user object includes only the
+            status author's numerical ID.
+
+        :returns: A tweet dict.
+        """
+        params = {'id': id}
+        set_int_param(params, 'count', count)
+        set_bool_param(params, 'trim_user', trim_user)
+        return self._get_api('statuses/retweets.json', params)
 
     def show(self, id, trim_user=None, include_my_retweet=None,
              include_entities=None):
