@@ -315,7 +315,66 @@ class TwitterClient(object):
         set_bool_param(params, 'include_entities', include_entities)
         return self._get_api('statuses/mentions_timeline.json', params)
 
-    # TODO: Implement statuses_user_timeline()
+    def statuses_user_timeline(self, user_id=None, screen_name=None,
+                               since_id=None, count=None, max_id=None,
+                               trim_user=None, exclude_replies=None,
+                               contributor_details=None,
+                               include_rts=None):
+        """
+        Returns a list of the most recent tweets posted by the specified user.
+
+        https://dev.twitter.com/docs/api/1.1/get/statuses/user_timeline
+
+        Either ``user_id`` or ``screen_name`` must be provided.
+
+        :param str user_id:
+            The ID of the user to return tweets for.
+
+        :param str screen_name:
+            The screen name of the user to return tweets for.
+
+        :param str since_id:
+            Returns results with an ID greater than (that is, more recent than)
+            the specified ID. Tweets newer than this may not be returned due to
+            certain API limits.
+
+        :param int count:
+            Specifies the number of tweets to try and retrieve, up to a maximum
+            of 200.
+
+        :param str max_id:
+            Returns results with an ID less than (that is, older than) or equal
+            to the specified ID.
+
+        :param bool trim_user:
+            When set to ``True``, the tweet's user object includes only the
+            status author's numerical ID.
+
+        :param bool exclude_replies:
+            When set to ``True``, replies will not appear in the timeline.
+
+        :param bool contributor_details:
+            This parameter enhances the contributors element of the status
+            response to include the screen_name of the contributor. By default
+            only the user_id of the contributor is included.
+
+        :param bool include_rts:
+            When set to ``False``, retweets will not appear in the timeline.
+
+        :returns: A list of tweet dicts.
+        """
+        params = {}
+        set_str_param(params, 'user_id', user_id)
+        set_str_param(params, 'screen_name', screen_name)
+        set_str_param(params, 'since_id', since_id)
+        set_int_param(params, 'count', count)
+        set_str_param(params, 'max_id', max_id)
+        set_bool_param(params, 'trim_user', trim_user)
+        set_bool_param(params, 'exclude_replies', exclude_replies)
+        set_bool_param(params, 'contributor_details', contributor_details)
+        set_bool_param(params, 'include_rts', include_rts)
+        return self._get_api('statuses/user_timeline.json', params)
+
     # TODO: Implement statuses_home_timeline()
     # TODO: Implement statuses_retweets_of_me()
 
@@ -525,11 +584,6 @@ class TwitterClient(object):
         :returns: An unstarted :class:`TwitterStreamService`.
         """
         params = {}
-        if not (follow or track or locations):
-            raise ValueError(
-                "At least one of `follow`, `track`, or `locations` must be"
-                " non-empty.")
-
         if follow is not None:
             params['follow'] = ','.join(follow)
         if track is not None:

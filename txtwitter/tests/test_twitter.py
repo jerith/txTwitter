@@ -342,6 +342,56 @@ class TestTwitterClient(TestCase):
             contributor_details=True, include_entities=False)
         self.assertEqual(resp, response_list)
 
+    @inlineCallbacks
+    def test_statuses_user_timeline(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/statuses/user_timeline.json'
+        response_list = [{
+            # Truncated tweet data.
+            "id_str": "123",
+            "text": "Tweet!",
+        }, {
+            # Truncated tweet data.
+            "id_str": "122",
+            "text": "Tweet!",
+        }]
+        agent.add_expected_request(
+            'GET', uri, {}, self._resp_json(response_list))
+        resp = yield client.statuses_user_timeline()
+        self.assertEqual(resp, response_list)
+
+    @inlineCallbacks
+    def test_statuses_user_timeline_all_params(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/statuses/user_timeline.json'
+        response_list = [{
+            # Truncated tweet data.
+            "id_str": "123",
+            "text": "Tweet!",
+        }, {
+            # Truncated tweet data.
+            "id_str": "122",
+            "text": "Tweet!",
+        }]
+        expected_params = {
+            'user_id': '12',
+            'screen_name': 'fakeuser',
+            'since_id': '121',
+            'count': '10',
+            'max_id': '123',
+            'trim_user': 'true',
+            'exclude_replies': 'true',
+            'contributor_details': 'true',
+            'include_rts': 'false',
+        }
+        agent.add_expected_request(
+            'GET', uri, expected_params, self._resp_json(response_list))
+        resp = yield client.statuses_user_timeline(
+            user_id='12', screen_name='fakeuser', since_id='121', count=10,
+            max_id='123', trim_user=True, exclude_replies=True,
+            contributor_details=True, include_rts=False)
+        self.assertEqual(resp, response_list)
+
     # TODO: Tests for statuses_user_timeline()
     # TODO: Tests for statuses_home_timeline()
     # TODO: Tests for statuses_retweets_of_me()
