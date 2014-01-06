@@ -55,6 +55,150 @@ class TestAuthHelpers(TestCase):
         self.assertNotEqual(auth_params_in_url, auth_no_params)
 
 
+class TestParamHelpers(TestCase):
+    @property
+    def _set_bool_param(self):
+        from txtwitter.twitter import set_bool_param
+        return set_bool_param
+
+    @property
+    def _set_str_param(self):
+        from txtwitter.twitter import set_str_param
+        return set_str_param
+
+    @property
+    def _set_float_param(self):
+        from txtwitter.twitter import set_float_param
+        return set_float_param
+
+    def test_set_bool_param_None(self):
+        """
+        set_bool_param() should do nothing if the value is ``None``.
+        """
+        params = {}
+        self._set_bool_param(params, 'foo', None)
+        self.assertEqual(params, {})
+
+    def test_set_bool_param_True(self):
+        """
+        set_bool_param() should set the param to 'true' if the value is
+        ``True``.
+        """
+        params = {}
+        self._set_bool_param(params, 'foo', True)
+        self.assertEqual(params, {'foo': 'true'})
+
+    def test_set_bool_param_False(self):
+        """
+        set_bool_param() should set the param to 'false' if the value is
+        ``False``.
+        """
+        params = {}
+        self._set_bool_param(params, 'foo', False)
+        self.assertEqual(params, {'foo': 'false'})
+
+    def test_set_bool_param_bad(self):
+        """
+        set_bool_param() should raise ValueError if the value is not a bool or
+        ``None``.
+        """
+        self.assertRaises(ValueError, self._set_bool_param, {}, 'foo', 1)
+
+    def test_set_str_param_None(self):
+        """
+        set_str_param() should do nothing if the value is ``None``.
+        """
+        params = {}
+        self._set_str_param(params, 'foo', None)
+        self.assertEqual(params, {})
+
+    def test_set_str_param(self):
+        """
+        set_str_param() should set the param if the value is a string.
+        """
+        params = {}
+        self._set_str_param(params, 'foo', 'some string')
+        self.assertEqual(params, {'foo': 'some string'})
+
+    def test_set_str_param_bad(self):
+        """
+        set_str_param() should raise ValueError if the value is not a string or
+        ``None``.
+        """
+        self.assertRaises(ValueError, self._set_str_param, {}, 'foo', True)
+
+    def test_set_float_param_None(self):
+        """
+        set_float_param() should do nothing if the value is ``None``.
+        """
+        params = {}
+        self._set_float_param(params, 'foo', None)
+        self.assertEqual(params, {})
+
+    def test_set_float_param(self):
+        """
+        set_float_param() should set the param if the value is a float.
+        """
+        params = {}
+        self._set_float_param(params, 'foo', 42.5)
+        self.assertEqual(params, {'foo': '42.5'})
+
+    def test_set_float_param_int(self):
+        """
+        set_float_param() should set the param if the value is an int.
+        """
+        params = {}
+        self._set_float_param(params, 'foo', 42)
+        self.assertEqual(params, {'foo': '42.0'})
+
+    def test_set_float_param_str(self):
+        """
+        set_float_param() should set the param if the value is an int.
+        """
+        params = {}
+        self._set_float_param(params, 'foo', '42.5')
+        self.assertEqual(params, {'foo': '42.5'})
+
+    def test_set_float_param_min(self):
+        """
+        set_float_param() should raise ValueError if the value is less than the
+        minimum.
+        """
+        self.assertRaises(
+            ValueError, self._set_float_param, {}, 'foo', 42.5, min=50)
+
+    def test_set_float_param_max(self):
+        """
+        set_float_param() should raise ValueError if the value is greater than
+        the maximum.
+        """
+        self.assertRaises(
+            ValueError, self._set_float_param, {}, 'foo', 42.5, max=40)
+
+    def test_set_float_param_min_str(self):
+        """
+        set_float_param() should raise ValueError if the value is less than the
+        minimum.
+        """
+        self.assertRaises(
+            ValueError, self._set_float_param, {}, 'foo', '42.5', min=50)
+
+    def test_set_float_param_max_str(self):
+        """
+        set_float_param() should raise ValueError if the value is greater than
+        the maximum.
+        """
+        self.assertRaises(
+            ValueError, self._set_float_param, {}, 'foo', '42.5', max=40)
+
+    def test_set_float_param_bad(self):
+        """
+        set_float_param() should raise ValueError if the value is not a float
+        (and cannot be turned into one) or ``None``.
+        """
+        self.assertRaises(ValueError, self._set_float_param, {}, 'foo', True)
+
+
 class TestTwitterClient(TestCase):
     timeout = 1
 
@@ -95,6 +239,28 @@ class TestTwitterClient(TestCase):
         self.assertEqual(resp, response_dict)
 
     @inlineCallbacks
+    def test_show_all_params(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/statuses/show.json'
+        response_dict = {
+            # Truncated tweet data.
+            "id_str": "123",
+            "text": "Tweet!",
+        }
+        expected_params = {
+            'id': '123',
+            'trim_user': 'true',
+            'include_my_retweet': 'true',
+            'include_entities': 'false',
+        }
+        agent.add_expected_request(
+            'GET', uri, expected_params, self._resp_json(response_dict))
+        resp = yield client.show(
+            "123", trim_user=True, include_my_retweet=True,
+            include_entities=False)
+        self.assertEqual(resp, response_dict)
+
+    @inlineCallbacks
     def test_show_HTTP_404(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/statuses/show.json'
@@ -119,6 +285,31 @@ class TestTwitterClient(TestCase):
         agent.add_expected_request(
             'POST', uri, {'status': 'Tweet!'}, self._resp_json(response_dict))
         resp = yield client.update("Tweet!")
+        self.assertEqual(resp, response_dict)
+
+    @inlineCallbacks
+    def test_update_all_params(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/statuses/update.json'
+        response_dict = {
+            # Truncated tweet data.
+            "id_str": "123",
+            "text": "Tweet!",
+        }
+        expected_params = {
+            'status': 'Tweet!',
+            'in_reply_to_status_id': '122',
+            'lat': '-33.93',
+            'long': '18.42',
+            'place_id': 'abc123',
+            'display_coordinates': 'true',
+            'trim_user': 'true',
+        }
+        agent.add_expected_request(
+            'POST', uri, expected_params, self._resp_json(response_dict))
+        resp = yield client.update(
+            "Tweet!", in_reply_to_status_id="122", lat=-33.93, long=18.42,
+            place_id='abc123', display_coordinates=True, trim_user=True)
         self.assertEqual(resp, response_dict)
 
     @inlineCallbacks
