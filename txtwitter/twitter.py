@@ -126,10 +126,6 @@ class TwitterClient(object):
     def update(self, content):
         return self._post_api('statuses/update.json', {'status': content})
 
-    def _deliver_to(self, response, protocol):
-        response.deliverBody(protocol)
-        return response
-
     def stream_filter(self, delegate, track=None):
         params = {}
         if track is not None:
