@@ -269,7 +269,52 @@ class TwitterClient(object):
 
     # Timelines
 
-    # TODO: Implement statuses_mentions_timeline()
+    def statuses_mentions_timeline(self, count=None, since_id=None,
+                                   max_id=None, trim_user=None,
+                                   contributor_details=None,
+                                   include_entities=None):
+        """
+        Returns a list of the most recent mentions (tweets containing a users's
+        @screen_name) for the authenticating user.
+
+        https://dev.twitter.com/docs/api/1.1/get/statuses/mentions_timeline
+
+        :param int count:
+            Specifies the number of tweets to try and retrieve, up to a maximum
+            of 200.
+
+        :param str since_id:
+            Returns results with an ID greater than (that is, more recent than)
+            the specified ID. Tweets newer than this may not be returned due to
+            certain API limits.
+
+        :param str max_id:
+            Returns results with an ID less than (that is, older than) or equal
+            to the specified ID.
+
+        :param bool trim_user:
+            When set to ``True``, the tweet's user object includes only the
+            status author's numerical ID.
+
+        :param bool contributor_details:
+            This parameter enhances the contributors element of the status
+            response to include the screen_name of the contributor. By default
+            only the user_id of the contributor is included.
+
+        :param bool include_entities:
+            When set to ``False``, the ``entities`` node will not be included.
+
+        :returns: A list of tweet dicts.
+        """
+        params = {}
+        set_int_param(params, 'count', count)
+        set_str_param(params, 'since_id', since_id)
+        set_str_param(params, 'max_id', max_id)
+        set_bool_param(params, 'trim_user', trim_user)
+        set_bool_param(params, 'contributor_details', contributor_details)
+        set_bool_param(params, 'include_entities', include_entities)
+        return self._get_api('statuses/mentions_timeline.json', params)
+
     # TODO: Implement statuses_user_timeline()
     # TODO: Implement statuses_home_timeline()
     # TODO: Implement statuses_retweets_of_me()

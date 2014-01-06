@@ -294,6 +294,60 @@ class TestTwitterClient(TestCase):
             agent=agent)
         return agent, client
 
+    # Timelines
+
+    @inlineCallbacks
+    def test_statuses_mentions_timeline(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/statuses/mentions_timeline.json'
+        response_list = [{
+            # Truncated tweet data.
+            "id_str": "123",
+            "text": "Tweet!",
+        }, {
+            # Truncated tweet data.
+            "id_str": "122",
+            "text": "Tweet!",
+        }]
+        agent.add_expected_request(
+            'GET', uri, {}, self._resp_json(response_list))
+        resp = yield client.statuses_mentions_timeline()
+        self.assertEqual(resp, response_list)
+
+    @inlineCallbacks
+    def test_statuses_mentions_timeline_all_params(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/statuses/mentions_timeline.json'
+        response_list = [{
+            # Truncated tweet data.
+            "id_str": "123",
+            "text": "Tweet!",
+        }, {
+            # Truncated tweet data.
+            "id_str": "122",
+            "text": "Tweet!",
+        }]
+        expected_params = {
+            'count': '10',
+            'since_id': '121',
+            'max_id': '123',
+            'trim_user': 'true',
+            'contributor_details': 'true',
+            'include_entities': 'false',
+        }
+        agent.add_expected_request(
+            'GET', uri, expected_params, self._resp_json(response_list))
+        resp = yield client.statuses_mentions_timeline(
+            count=10, since_id='121', max_id='123', trim_user=True,
+            contributor_details=True, include_entities=False)
+        self.assertEqual(resp, response_list)
+
+    # TODO: Tests for statuses_user_timeline()
+    # TODO: Tests for statuses_home_timeline()
+    # TODO: Tests for statuses_retweets_of_me()
+
+    # Tweets
+
     @inlineCallbacks
     def test_statuses_retweets(self):
         agent, client = self._agent_and_TwitterClient()
@@ -511,6 +565,16 @@ class TestTwitterClient(TestCase):
         resp = yield client.statuses_retweet("123", trim_user=True)
         self.assertEqual(resp, response_dict)
 
+    # TODO: Tests for statuses_update_with_media()
+    # TODO: Tests for statuses_oembed()
+    # TODO: Tests for statuses_retweeters_ids()
+
+    # Search
+
+    # TODO: Tests for search_tweets()
+
+    # Streaming
+
     @inlineCallbacks
     def test_stream_filter_track(self):
         agent, client = self._agent_and_TwitterClient()
@@ -563,6 +627,9 @@ class TestTwitterClient(TestCase):
         self.assertIs(svc, connected_svc)
         yield svc.stopService()
         stream.finished()
+
+    # TODO: Tests for stream_sample()
+    # TODO: Tests for stream_firehose()
 
     @inlineCallbacks
     def test_userstream_user_with_user(self):
@@ -622,3 +689,116 @@ class TestTwitterClient(TestCase):
         self.assertIs(svc, connected_svc)
         yield svc.stopService()
         stream.finished()
+
+    # Direct Messages
+
+    # TODO: Tests for direct_messages()
+    # TODO: Tests for direct_messages_sent()
+    # TODO: Tests for direct_messages_show()
+    # TODO: Tests for direct_messages_destroy()
+    # TODO: Tests for direct_messages_new()
+
+    # Friends & Followers
+
+    # TODO: Tests for friendships_no_retweets_ids()
+    # TODO: Tests for friends_ids()
+    # TODO: Tests for followers_ids()
+    # TODO: Tests for friendships_lookup()
+    # TODO: Tests for friendships_incoming()
+    # TODO: Tests for friendships_outgoing()
+    # TODO: Tests for friendships_create()
+    # TODO: Tests for friendships_destroy()
+    # TODO: Tests for friendships_update()
+    # TODO: Tests for friendships_show()
+    # TODO: Tests for friends_list()
+    # TODO: Tests for followers_list()
+
+    # Users
+
+    # TODO: Tests for account_settings()
+    # TODO: Tests for account_verify_credentials()
+    # TODO: Tests for account_settings()
+    # TODO: Tests for account_update_delivery_device()
+    # TODO: Tests for account_update_profile()
+    # TODO: Tests for account_update_profile_background_image()
+    # TODO: Tests for account_update_profile_colors()
+    # TODO: Tests for account_update_profile_image()
+    # TODO: Tests for blocks_list()
+    # TODO: Tests for blocks_ids()
+    # TODO: Tests for blocks_create()
+    # TODO: Tests for blocks_destroy()
+    # TODO: Tests for users_lookup()
+    # TODO: Tests for users_show()
+    # TODO: Tests for users_search()
+    # TODO: Tests for users_contributees()
+    # TODO: Tests for users_contributors()
+    # TODO: Tests for account_remove_profile_banner()
+    # TODO: Tests for account_update_profile_banner()
+    # TODO: Tests for users/profile_banner()
+
+    # Suggested Users
+
+    # TODO: Tests for users_suggestions()
+    # TODO: Tests for users_suggestions()
+    # TODO: Tests for users_suggestions_members()
+
+    # Favorites
+
+    # TODO: Tests for favorites_list()
+    # TODO: Tests for favorites_destroy()
+    # TODO: Tests for favorites_create()
+
+    # Lists
+
+    # TODO: Tests for lists_list()
+    # TODO: Tests for lists_statuses()
+    # TODO: Tests for lists_members_destroy()
+    # TODO: Tests for lists_memberships()
+    # TODO: Tests for lists_subscribers()
+    # TODO: Tests for lists_subscribers/create()
+    # TODO: Tests for lists_subscribers/show()
+    # TODO: Tests for lists_subscribers/destroy()
+    # TODO: Tests for lists_members_create_all()
+    # TODO: Tests for lists_members_show()
+    # TODO: Tests for lists_members()
+    # TODO: Tests for lists_members_create()
+    # TODO: Tests for lists_destroy()
+    # TODO: Tests for lists_update()
+    # TODO: Tests for lists_create()
+    # TODO: Tests for lists_show()
+    # TODO: Tests for lists_subscriptions()
+    # TODO: Tests for lists_members_destroy_all()
+    # TODO: Tests for lists_ownerships()
+
+    # Saved Searches
+
+    # TODO: Tests for saved_searches_list()
+    # TODO: Tests for saved_searches_show()
+    # TODO: Tests for saved_searches_create()
+    # TODO: Tests for saved_searches_destroy()
+
+    # Places & Geo
+
+    # TODO: Tests for geo_id()
+    # TODO: Tests for geo_reverse_geocode()
+    # TODO: Tests for geo_search()
+    # TODO: Tests for geo_similar_places()
+    # TODO: Tests for geo_place()
+
+    # Trends
+
+    # TODO: Tests for trends_place()
+    # TODO: Tests for trends_available()
+    # TODO: Tests for trends_closest()
+
+    # Spam Reporting
+
+    # TODO: Tests for users_report_spam()
+
+    # Help
+
+    # TODO: Tests for help_configuration()
+    # TODO: Tests for help_languages()
+    # TODO: Tests for help_privacy()
+    # TODO: Tests for help_tos()
+    # TODO: Tests for application_rate_limit_status()
