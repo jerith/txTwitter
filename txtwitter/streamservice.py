@@ -49,13 +49,12 @@ class TwitterStreamService(Service):
            will be in effect for your account.
 
     For now, we just do an exponential backoff starting at one second and
-    doubling every time we reconnect (including the first!) to a maximum of ten
-    minutes. For explicit rate limiting, we start at 30 seconds instead of one
-    second.
+    doubling every time we reconnect to a maximum of ten minutes. For explicit
+    rate limiting, we start at 30 seconds instead of one second.
     """
 
     RECONNECT_DELAY_INITIAL = 1
-    RECONNECT_DELAY_RATE_LIMIT = 30
+    RECONNECT_DELAY_RATE_LIMIT = 30  # This gets doubled the first time.
     RECONNECT_DELAY_MULTIPLIER = 2
     RECONNECT_DELAY_MAX = 60 * 10
 
@@ -67,7 +66,7 @@ class TwitterStreamService(Service):
 
     connect_callback = None
     disconnect_callback = None
-    reconnect_delay = RECONNECT_DELAY_INITIAL
+    reconnect_delay = 0
 
     def __init__(self, connect_func, delegate):
         self.connect_func = connect_func
@@ -75,6 +74,11 @@ class TwitterStreamService(Service):
 
     def startService(self):
         Service.startService(self)
+
+        if self.clock is None:
+            from twisted.internet import reactor
+            self.clock = reactor
+
         self._connect()
 
     def stopService(self):
@@ -129,10 +133,6 @@ class TwitterStreamService(Service):
     def _reconnect(self):
         if not self.running:
             return
-
-        if self.clock is None:
-            from twisted.internet import reactor
-            self.clock = reactor
 
         self._update_reconnect_delay()
         self._reconnect_delayedcall = self.clock.callLater(

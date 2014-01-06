@@ -88,12 +88,82 @@ class TestTwitterClient(TestCase):
         svc.connection_lost(failure)
         self.assertEqual([], self.flushLoggedErrors())
 
-    def test_reconnection_HTTP_500(self):
+    def test_HTTP_500_initial_reconnect_delay(self):
         """
-        Reconnecting after an HTTP error should happen with the appropriate
-        delays.
+        The first HTTP error response should set the initial reconnect delay to
+        one second.
+        """
+        d = Deferred()
+        svc = self._TwitterStreamService(lambda: d, None)
+        svc.clock = Clock()
+        svc.startService()
+
+        self.assertEqual(svc.reconnect_delay, 0)
+        d.callback(self._FakeResponse(None, 500))
+        self.assertEqual(svc.reconnect_delay, 1)
+
+    def test_HTTP_500_second_reconnect_delay(self):
+        """
+        An HTTP error response when we already have a reconnect delay should
+        double the delay and attempt to reconnect again.
+        """
+        d = Deferred()
+        svc = self._TwitterStreamService(lambda: d, None)
+        svc.clock = Clock()
+        svc.reconnect_delay = 1
+        svc.startService()
+
+        self.assertEqual(svc.reconnect_delay, 1)
+        d.callback(self._FakeResponse(None, 500))
+        self.assertEqual(svc.reconnect_delay, 2)
+
+    def test_HTTP_500_max_reconnect_delay(self):
+        """
+        The reconnect delay should never go over the maximum of ten minutes.
+        """
+        d = Deferred()
+        svc = self._TwitterStreamService(lambda: d, None)
+        svc.clock = Clock()
+        svc.reconnect_delay = 60 * 60 * 24
+        svc.startService()
+
+        self.assertEqual(svc.reconnect_delay, 60 * 60 * 24)
+        d.callback(self._FakeResponse(None, 500))
+        self.assertEqual(svc.reconnect_delay, 60 * 10)
+
+    def test_HTTP_500_schedules_reconnect(self):
+        """
+        An HTTP error should schedule a reconnection attempt.
+        """
+        d = Deferred()
+        svc = self._TwitterStreamService(lambda: d, None)
+        svc.clock = Clock()
+        svc.startService()
+
+        d.callback(self._FakeResponse(None, 500))
+        self.assertEqual(svc._connect, svc._reconnect_delayedcall.func)
+
+    def test_HTTP_500_calls_disconnect_callback(self):
+        """
+        An HTTP error should schedule a reconnection attempt.
         """
         from txtwitter.error import TwitterAPIError
+        d = Deferred()
+        called = []
+        svc = self._TwitterStreamService(lambda: d, None)
+        svc.set_disconnect_callback(lambda s, r: called.append(r))
+        svc.clock = Clock()
+        svc.startService()
+
+        d.callback(self._FakeResponse(None, 500))
+        [failure] = called
+        self.assertEqual(TwitterAPIError, type(failure.value))
+
+    def test_reconnect(self):
+        """
+        A reconnect should wait for the required amount of time and then
+        attempt to connect again.
+        """
         d1 = Deferred()
         d2 = Deferred()
         connect_deferreds = [d1, d2]
@@ -101,20 +171,12 @@ class TestTwitterClient(TestCase):
         svc = self._TwitterStreamService(
             lambda: connect_deferreds.pop(0), None)
         svc.set_connect_callback(lambda s: called.append(s))
-        svc.set_disconnect_callback(lambda s, r: called.append(r))
         svc.clock = Clock()
         svc.startService()
-        self.assertEqual(called, [])
-
         d1.callback(self._FakeResponse(None, 500))
-        [failure] = called
-        self.assertEqual(TwitterAPIError, type(failure.value))
-        self.assertEqual(failure.value.args[0], 500)
-        self.assertEqual(svc.reconnect_delay, 2)
-        self.assertNotEqual(svc._reconnect_delayedcall, None)
+        self.assertEqual([], called)
 
-        svc.clock.advance(2)
+        svc.clock.advance(svc.reconnect_delay)
         self.assertEqual(svc._reconnect_delayedcall, None)
-        self.assertEqual(called, [failure])
         d2.callback(self._FakeResponse(None))
-        self.assertEqual(called, [failure, svc])
+        self.assertEqual([svc], called)
