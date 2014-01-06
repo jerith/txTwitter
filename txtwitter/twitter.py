@@ -320,13 +320,20 @@ class TwitterClient(object):
     def stream_filter(self, delegate, follow=None, track=None, locations=None,
                       stall_warnings=None):
         """
-        Connect to the public filter stream API.
+        Streams public messages filtered by various parameters.
 
-        https://stream.twitter.com/1.1/statuses/filter.json
+        https://dev.twitter.com/docs/api/1.1/post/statuses/filter
 
         At least one of ``follow``, ``track``, or ``locations`` must be
         provided. See the API documentation linked above for details on these
         parameters and the various limits on this API.
+
+        :param delegate:
+            A delegate function that will be called for each message in the
+            stream and will be passed the message dict as the only parameter.
+            The message dicts passed to this function may represent any message
+            type and the delegate is responsible for any dispatch that may be
+            required. (:mod:`txtwitter.messagetools` may be helpful here.)
 
         :param list follow:
             A list of user IDs, indicating the users to return statuses for in
@@ -364,11 +371,44 @@ class TwitterClient(object):
             delegate)
         return svc
 
-    def userstream_user(self, delegate, with_='followings'):
-        params = {
-            'stringify_friend_ids': 'true',
-            'with': with_,
-        }
+    def userstream_user(self, delegate, stall_warnings=None,
+                        with_='followings', replies=None):
+        """
+        Streams messages for a single user.
+
+        https://dev.twitter.com/docs/api/1.1/get/user
+
+        The ``stringify_friend_ids`` parameter is always set to ``'true'`` for
+        consistency with the use of string identifiers elsewhere.
+
+        :param delegate:
+            A delegate function that will be called for each message in the
+            stream and will be passed the message dict as the only parameter.
+            The message dicts passed to this function may represent any message
+            type and the delegate is responsible for any dispatch that may be
+            required. (:mod:`txtwitter.messagetools` may be helpful here.)
+
+        :param bool stall_warnings:
+            Specifies whether stall warnings should be delivered.
+
+        :param str with_:
+            If ``'followings'`` (the default), the stream will include messages
+            from both the authenticated user and the authenticated user's
+            followers. If ``'user'``, the stream will only include messages
+            from (or mentioning) the autheticated user. All other values are
+            invalid. (The underscore appended to the parameter name is to avoid
+            conflicting with Python's ``with`` keyword.)
+
+        :param str replies:
+            If set to ``'all'``, replies to tweets will be included even if the
+            authenticated user does not follow both parties.
+
+        :returns: An unstarted :class:`TwitterStreamService`.
+        """
+        params = {'stringify_friend_ids': 'true'}
+        set_bool_param(params, 'stall_warnings', stall_warnings)
+        set_str_param(params, 'with', with_)
+        set_str_param(params, 'replies', replies)
 
         svc = TwitterStreamService(
             lambda: self._get_userstream('user.json', params),

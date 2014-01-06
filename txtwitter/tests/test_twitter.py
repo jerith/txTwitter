@@ -366,7 +366,7 @@ class TestTwitterClient(TestCase):
         stream.finished()
 
     @inlineCallbacks
-    def test_userstream_with_user(self):
+    def test_userstream_user_with_user(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://userstream.twitter.com/1.1/user.json'
         stream = self._FakeResponse(None)
@@ -398,5 +398,28 @@ class TestTwitterClient(TestCase):
             {"id_str": "1", "text": "Tweet 1", "user": {}},
             {"id_str": "2", "text": "Tweet 2", "user": {}},
         ])
+        yield svc.stopService()
+        stream.finished()
+
+    @inlineCallbacks
+    def test_userstream_user_all_params(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://userstream.twitter.com/1.1/user.json'
+        stream = self._FakeResponse(None)
+        agent.add_expected_request('GET', uri, {
+            'stringify_friend_ids': 'true',
+            'stall_warnings': 'true',
+            'with': 'user',
+            'replies': 'all',
+        }, stream)
+
+        connected = Deferred()
+        svc = client.userstream_user(
+            lambda tweet: None, stall_warnings=True, with_='user',
+            replies='all')
+        svc.set_connect_callback(connected.callback)
+        svc.startService()
+        connected_svc = yield connected
+        self.assertIs(svc, connected_svc)
         yield svc.stopService()
         stream.finished()
