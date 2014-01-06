@@ -317,10 +317,47 @@ class TwitterClient(object):
         set_bool_param(params, 'trim_user', trim_user)
         return self._post_api('statuses/update.json', params)
 
-    def stream_filter(self, delegate, track=None):
+    def stream_filter(self, delegate, follow=None, track=None, locations=None,
+                      stall_warnings=None):
+        """
+        Connect to the public filter stream API.
+
+        https://stream.twitter.com/1.1/statuses/filter.json
+
+        At least one of ``follow``, ``track``, or ``locations`` must be
+        provided. See the API documentation linked above for details on these
+        parameters and the various limits on this API.
+
+        :param list follow:
+            A list of user IDs, indicating the users to return statuses for in
+            the stream.
+
+        :param list track:
+            List of keywords to track.
+
+        :param list locations:
+            List of location bounding boxes to track.
+            XXX: Currently unsupported.
+
+        :param bool stall_warnings:
+            Specifies whether stall warnings should be delivered.
+
+        :returns: An unstarted :class:`TwitterStreamService`.
+        """
         params = {}
+        if not (follow or track or locations):
+            raise ValueError(
+                "At least one of `follow`, `track`, or `locations` must be"
+                " non-empty.")
+
+        if follow is not None:
+            params['follow'] = ','.join(follow)
         if track is not None:
             params['track'] = ','.join(track)
+        if locations is not None:
+            raise NotImplementedError(
+                "The `locations` parameter is not yet supported.")
+        set_bool_param(params, 'stall_warnings', stall_warnings)
 
         svc = TwitterStreamService(
             lambda: self._post_stream('statuses/filter.json', params),

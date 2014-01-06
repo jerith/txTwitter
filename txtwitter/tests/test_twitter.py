@@ -343,6 +343,29 @@ class TestTwitterClient(TestCase):
         stream.finished()
 
     @inlineCallbacks
+    def test_stream_filter_all_params(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://stream.twitter.com/1.1/statuses/filter.json'
+        stream = self._FakeResponse(None)
+        expected_params = {
+            'follow': 'Alice,Bob',
+            'track': 'foo,bar',
+            'stall_warnings': 'true',
+        }
+        agent.add_expected_request('POST', uri, expected_params, stream)
+
+        connected = Deferred()
+        svc = client.stream_filter(
+            lambda tweet: None, follow=['Alice', 'Bob'], track=['foo', 'bar'],
+            stall_warnings=True)
+        svc.set_connect_callback(connected.callback)
+        svc.startService()
+        connected_svc = yield connected
+        self.assertIs(svc, connected_svc)
+        yield svc.stopService()
+        stream.finished()
+
+    @inlineCallbacks
     def test_userstream_with_user(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://userstream.twitter.com/1.1/user.json'
