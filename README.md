@@ -9,8 +9,9 @@ A Twisted-based client library for Twitter's API.
 Status
 ------
 
-Currently very incomplete (only four API calls are supported), but the
-architecture seems sound.
+Currently very incomplete (only seven API calls, two of them streaming, are
+supported), but the architecture seems sound. All remaining API calls have
+``TODO`` notes.
 
 There are some moderately comprehensive docstrings in the code, but proper
 documentation still needs to be written.

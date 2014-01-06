@@ -267,6 +267,15 @@ class TwitterClient(object):
         uri = self._make_uri(self._userstream_url_base, resource, parameters)
         return self._make_request('GET', uri)
 
+    # Timelines
+
+    # TODO: Implement statuses_mentions_timeline()
+    # TODO: Implement statuses_user_timeline()
+    # TODO: Implement statuses_home_timeline()
+    # TODO: Implement statuses_retweets_of_me()
+
+    # Tweets
+
     def statuses_retweets(self, id, count=None, trim_user=None):
         """
         Returns a list of the most recent retweets of the Tweet specified by
@@ -426,6 +435,16 @@ class TwitterClient(object):
         set_bool_param(params, 'trim_user', trim_user)
         return self._post_api('statuses/retweet.json', params)
 
+    # TODO: Implement statuses_update_with_media()
+    # TODO: Implement statuses_oembed()
+    # TODO: Implement statuses_retweeters_ids()
+
+    # Search
+
+    # TODO: Implement search_tweets()
+
+    # Streaming
+
     def stream_filter(self, delegate, follow=None, track=None, locations=None,
                       stall_warnings=None):
         """
@@ -480,6 +499,9 @@ class TwitterClient(object):
             delegate)
         return svc
 
+    # TODO: Implement stream_sample()
+    # TODO: Implement stream_firehose()
+
     def userstream_user(self, delegate, stall_warnings=None,
                         with_='followings', replies=None):
         """
@@ -523,3 +545,120 @@ class TwitterClient(object):
             lambda: self._get_userstream('user.json', params),
             delegate)
         return svc
+
+    # Direct Messages
+
+    # TODO: Implement direct_messages()
+    # TODO: Implement direct_messages_sent()
+    # TODO: Implement direct_messages_show()
+    # TODO: Implement direct_messages_destroy()
+    # TODO: Implement direct_messages_new()
+
+    # Friends & Followers
+
+    # TODO: Implement friendships_no_retweets_ids()
+    # TODO: Implement friends_ids()
+    # TODO: Implement followers_ids()
+    # TODO: Implement friendships_lookup()
+    # TODO: Implement friendships_incoming()
+    # TODO: Implement friendships_outgoing()
+    # TODO: Implement friendships_create()
+    # TODO: Implement friendships_destroy()
+    # TODO: Implement friendships_update()
+    # TODO: Implement friendships_show()
+    # TODO: Implement friends_list()
+    # TODO: Implement followers_list()
+
+    # Users
+
+    # TODO: Implement account_settings()
+    # TODO: Implement account_verify_credentials()
+    # TODO: Implement account_settings()
+    # TODO: Implement account_update_delivery_device()
+    # TODO: Implement account_update_profile()
+    # TODO: Implement account_update_profile_background_image()
+    # TODO: Implement account_update_profile_colors()
+    # TODO: Implement account_update_profile_image()
+    # TODO: Implement blocks_list()
+    # TODO: Implement blocks_ids()
+    # TODO: Implement blocks_create()
+    # TODO: Implement blocks_destroy()
+    # TODO: Implement users_lookup()
+    # TODO: Implement users_show()
+    # TODO: Implement users_search()
+    # TODO: Implement users_contributees()
+    # TODO: Implement users_contributors()
+    # TODO: Implement account_remove_profile_banner()
+    # TODO: Implement account_update_profile_banner()
+    # TODO: Implement users/profile_banner()
+
+    # Suggested Users
+
+    # TODO: Implement users_suggestions()
+    # TODO: Implement users_suggestions()
+    # TODO: Implement users_suggestions_members()
+
+    # Favorites
+
+    # TODO: Implement favorites_list()
+    # TODO: Implement favorites_destroy()
+    # TODO: Implement favorites_create()
+
+    # Lists
+
+    # TODO: Implement lists_list()
+    # TODO: Implement lists_statuses()
+    # TODO: Implement lists_members_destroy()
+    # TODO: Implement lists_memberships()
+    # TODO: Implement lists_subscribers()
+    # TODO: Implement lists_subscribers/create()
+    # TODO: Implement lists_subscribers/show()
+    # TODO: Implement lists_subscribers/destroy()
+    # TODO: Implement lists_members_create_all()
+    # TODO: Implement lists_members_show()
+    # TODO: Implement lists_members()
+    # TODO: Implement lists_members_create()
+    # TODO: Implement lists_destroy()
+    # TODO: Implement lists_update()
+    # TODO: Implement lists_create()
+    # TODO: Implement lists_show()
+    # TODO: Implement lists_subscriptions()
+    # TODO: Implement lists_members_destroy_all()
+    # TODO: Implement lists_ownerships()
+
+    # Saved Searches
+
+    # TODO: Implement saved_searches_list()
+    # TODO: Implement saved_searches_show()
+    # TODO: Implement saved_searches_create()
+    # TODO: Implement saved_searches_destroy()
+
+    # Places & Geo
+
+    # TODO: Implement geo_id()
+    # TODO: Implement geo_reverse_geocode()
+    # TODO: Implement geo_search()
+    # TODO: Implement geo_similar_places()
+    # TODO: Implement geo_place()
+
+    # Trends
+
+    # TODO: Implement trends_place()
+    # TODO: Implement trends_available()
+    # TODO: Implement trends_closest()
+
+    # Spam Reporting
+
+    # TODO: Implement users_report_spam()
+
+    # OAuth
+
+    # TODO: Decide whether any of these APIs should be implemented.
+
+    # Help
+
+    # TODO: Implement help_configuration()
+    # TODO: Implement help_languages()
+    # TODO: Implement help_privacy()
+    # TODO: Implement help_tos()
+    # TODO: Implement application_rate_limit_status()
