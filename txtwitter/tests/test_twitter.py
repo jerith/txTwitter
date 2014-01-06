@@ -1,58 +1,7 @@
 import json
 
-from oauth2 import Token, Consumer
 from twisted.internet.defer import Deferred, inlineCallbacks
 from twisted.trial.unittest import TestCase
-
-
-class TestAuthHelpers(TestCase):
-    def _make_auth_header(self, *args, **kw):
-        from txtwitter.twitter import make_auth_header
-        return make_auth_header(*args, **kw)
-
-    def assert_in(self, needle, haystack):
-        self.assertTrue(
-            needle in haystack, "%r is not in %r" % (needle, haystack))
-
-    def test_make_auth_header(self):
-        token = Token(key='token-key', secret='token-secret')
-        consumer = Consumer(key='consumer-key', secret='consumer-secret')
-        auth_header = self._make_auth_header(
-            token, consumer, 'GET', 'https://example.com', {})
-
-        self.assert_in('oauth_token', auth_header)
-        self.assert_in('oauth_consumer_key', auth_header)
-        self.assert_in('oauth_version', auth_header)
-        self.assert_in('oauth_nonce', auth_header)
-        self.assert_in('oauth_timestamp', auth_header)
-        self.assert_in('oauth_signature', auth_header)
-
-    def test_make_auth_header_equivalent_param_types(self):
-        token = Token(key='token-key', secret='token-secret')
-        consumer = Consumer(key='consumer-key', secret='consumer-secret')
-
-        # We provide `oauth_nonce` and `oauth_timestamp` to make the hash
-        # deterministic.
-        auth_params_in_url = self._make_auth_header(
-            token, consumer, 'GET', 'https://example.com?foo=bar', {
-                'oauth_nonce': 'nonce',
-                'oauth_timestamp': '1234567890',
-            })
-        auth_params_in_params = self._make_auth_header(
-            token, consumer, 'GET', 'https://example.com', {
-                'oauth_nonce': 'nonce',
-                'oauth_timestamp': '1234567890',
-                'foo': 'bar',
-            })
-        self.assertEqual(auth_params_in_url, auth_params_in_params)
-
-        # And another one with no params to make sure it's different.
-        auth_no_params = self._make_auth_header(
-            token, consumer, 'GET', 'https://example.com', {
-                'oauth_nonce': 'nonce',
-                'oauth_timestamp': '1234567890',
-            })
-        self.assertNotEqual(auth_params_in_url, auth_no_params)
 
 
 class TestParamHelpers(TestCase):

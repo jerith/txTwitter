@@ -19,7 +19,7 @@ setup(
     author_email='firxen@gmail.com',
     packages=find_packages(),
     include_package_data=True,
-    install_requires=['Twisted', 'oauth2', 'pyOpenSSL'],
+    install_requires=['Twisted', 'oauthlib', 'pyOpenSSL'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Framework :: Twisted',

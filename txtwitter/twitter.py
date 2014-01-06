@@ -2,7 +2,7 @@ import json
 from StringIO import StringIO
 from urllib import urlencode
 
-import oauth2
+from oauthlib import oauth1
 from twisted.internet import reactor
 from twisted.python.failure import Failure
 from twisted.web.client import (
@@ -16,29 +16,6 @@ from txtwitter.streamservice import TwitterStreamService
 TWITTER_API_URL = 'https://api.twitter.com/1.1/'
 TWITTER_STREAM_URL = 'https://stream.twitter.com/1.1/'
 TWITTER_USERSTREAM_URL = 'https://userstream.twitter.com/1.1/'
-
-
-def make_auth_header(token, consumer, method, url, parameters=None):
-    """
-    Construct an OAuth Authorization header for a request.
-    """
-    if parameters is None:
-        parameters = {}
-    else:
-        # So we can safely modify them.
-        parameters = parameters.copy()
-
-    parameters['oauth_version'] = "1.0"
-    # It's handy to be able to override these if necessary.
-    parameters.setdefault('oauth_nonce', oauth2.generate_nonce())
-    parameters.setdefault('oauth_timestamp', oauth2.generate_timestamp())
-
-    req = oauth2.Request(method=method, url=url, parameters=parameters)
-    req.sign_request(oauth2.SignatureMethod_HMAC_SHA1(), consumer, token)
-
-    # Extract the header value and turn it into bytes.
-    [auth_value] = req.to_header().values()
-    return auth_value.encode('ascii')
 
 
 def _extract_partial_response(failure):
@@ -200,9 +177,10 @@ class TwitterClient(object):
     def __init__(self, token_key, token_secret, consumer_key, consumer_secret,
                  api_url=TWITTER_API_URL, stream_url=TWITTER_STREAM_URL,
                  userstream_url=TWITTER_USERSTREAM_URL, agent=None):
-        self._token = oauth2.Token(key=token_key, secret=token_secret)
-        self._consumer = oauth2.Consumer(
-            key=consumer_key, secret=consumer_secret)
+        self._token_key = token_key
+        self._token_secret = token_secret
+        self._consumer_key = consumer_key
+        self._consumer_secret = consumer_secret
         self._api_url_base = api_url
         self._stream_url_base = stream_url
         self._userstream_url_base = userstream_url
@@ -210,23 +188,26 @@ class TwitterClient(object):
             agent = Agent(self.reactor)
         self._agent = agent
 
-    def make_auth_header(self, method, url, parameters=None):
-        """
-        Construct an OAuth Authorization header for a request.
-        """
-        return make_auth_header(
-            self._token, self._consumer, method, url, parameters)
-
     def _make_request(self, method, uri, body_parameters=None):
-        body_producer = None
-        auth_header = self.make_auth_header(method, uri, body_parameters)
-        headers = Headers({'Authorization': [auth_header]})
-
+        headers = {}
+        body = None
         if body_parameters is not None:
-            body_producer = FileBodyProducer(
-                StringIO(urlencode(body_parameters)))
-            headers.addRawHeader(
-                'Content-Type', 'application/x-www-form-urlencoded')
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            }
+            body = urlencode(body_parameters)
+        client = oauth1.Client(
+            self._consumer_key, client_secret=self._consumer_secret,
+            resource_owner_key=self._token_key,
+            resource_owner_secret=self._token_secret, encoding='utf-8',
+            decoding='utf-8')
+        uri, headers, body = client.sign(
+            uri, http_method=method, headers=headers, body=body)
+        headers = Headers(dict((k, [v]) for k, v in headers.items()))
+
+        body_producer = None
+        if body is not None:
+            body_producer = FileBodyProducer(StringIO(body))
 
         d = self._agent.request(method, uri, headers, body_producer)
         return d.addCallback(self._handle_error)
