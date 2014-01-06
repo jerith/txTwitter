@@ -17,7 +17,10 @@ class FakeTransport(object):
 class FakeResponse(object):
     def __init__(self, body, code=200):
         self.code = code
-        self.phrase = RESPONSES[code]
+        if code == 420:
+            self.phrase = 'Rate Limited'
+        else:
+            self.phrase = RESPONSES[code]
         self._body = body
 
     def deliver_data(self, data):

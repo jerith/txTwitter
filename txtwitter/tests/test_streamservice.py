@@ -180,3 +180,44 @@ class TestTwitterClient(TestCase):
         self.assertEqual(svc._reconnect_delayedcall, None)
         d2.callback(self._FakeResponse(None))
         self.assertEqual([svc], called)
+
+    def test_rate_limit_initial_reconnect_delay(self):
+        """
+        The first HTTP rate limit response should set the reconnect delay to
+        one minute.
+        """
+        d = Deferred()
+        svc = self._TwitterStreamService(lambda: d, None)
+        svc.clock = Clock()
+        svc.startService()
+
+        self.assertEqual(svc.reconnect_delay, 0)
+        d.callback(self._FakeResponse(None, 420))
+        self.assertEqual(svc.reconnect_delay, 60)
+
+    def test_rate_limit_initial_reconnect_delay_existing_delay(self):
+        """
+        The first HTTP rate limit response should set the reconnect delay to
+        one minute if there is an existing delay less than this.
+        """
+        d = Deferred()
+        svc = self._TwitterStreamService(lambda: d, None)
+        svc.clock = Clock()
+        svc.reconnect_delay = 16
+        svc.startService()
+
+        d.callback(self._FakeResponse(None, 420))
+        self.assertEqual(svc.reconnect_delay, 60)
+
+    def test_rate_limit_second_reconnect_delay(self):
+        """
+        The second HTTP rate limit response should double the reconnect delay.
+        """
+        d = Deferred()
+        svc = self._TwitterStreamService(lambda: d, None)
+        svc.clock = Clock()
+        svc.reconnect_delay = 60
+        svc.startService()
+
+        d.callback(self._FakeResponse(None, 420))
+        self.assertEqual(svc.reconnect_delay, 120)
