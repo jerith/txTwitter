@@ -245,3 +245,68 @@ class TestTweetFunctions(TestCase):
         """
         msg = {'friends': []}
         self.assertRaises(ValueError, self.messagetools.tweet_user, msg)
+
+    def test_is_user(self):
+        """
+        is_user() should return `True` for valid user data.
+        """
+        self.assertEqual(True, self.messagetools.is_user({
+            'id_str': '12345',
+            'screen_name': 'luke'
+        }))
+
+    def test_is_user_nontweet(self):
+        """
+        is_user() should return `False` for a non-tweet message.
+        """
+        self.assertEqual(False, self.messagetools.is_user({
+            'friends': [],
+        }))
+
+    def test_ensure_user(self):
+        """
+        ensure_user() should return the original user data.
+        """
+        user = {
+            'id_str': '12345',
+            'screen_name': 'luke'
+        }
+        self.assertEqual(user, self.messagetools.ensure_user(user))
+
+    def test_ensure_user_nonuser(self):
+        """
+        ensure_user() should rase `ValueError` for invalid user data.
+        """
+        self.assertRaises(ValueError, self.messagetools.ensure_user, {})
+
+    def test_user_id(self):
+        """
+        user_id() should return the `id_str` field of a user.
+        """
+        user = {
+            'id_str': '12345',
+            'screen_name': 'luke'
+        }
+        self.assertEqual('12345', self.messagetools.user_id(user))
+
+    def test_user_id_nonuser(self):
+        """
+        user_id() should rase `ValueError` for a non-tweet message.
+        """
+        self.assertRaises(ValueError, self.messagetools.user_id, {})
+
+    def test_user_screen_name(self):
+        """
+        user_screen_name() should return the `screen_name` field of a user.
+        """
+        user = {
+            'id_str': '12345',
+            'screen_name': 'luke'
+        }
+        self.assertEqual('luke', self.messagetools.user_screen_name(user))
+
+    def test_user_screen_name_nonuser(self):
+        """
+        user_screen_name() should rase `ValueError` for a non-tweet message.
+        """
+        self.assertRaises(ValueError, self.messagetools.user_screen_name, {})

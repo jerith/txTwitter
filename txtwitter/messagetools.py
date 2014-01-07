@@ -39,3 +39,25 @@ def tweet_is_reply(message):
 
 def tweet_user(message):
     return ensure_tweet(message)['user']
+
+
+def is_user(user):
+    return set(['id_str', 'screen_name']).issubset(set(user.keys()))
+
+
+def ensure_user(user):
+    if not is_user(user):
+        raise ValueError("Data is not user data: %r" % (user,))
+    return user
+
+
+def user_screen_name(user):
+    return ensure_user(user).get('screen_name', None)
+
+
+def user_name(user):
+    return ensure_user(user).get('name', None)
+
+
+def user_id(user):
+    return ensure_user(user).get('id_str', None)
