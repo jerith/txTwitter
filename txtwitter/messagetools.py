@@ -51,13 +51,9 @@ def ensure_user(user):
     return user
 
 
-def user_screen_name(user):
-    return ensure_user(user).get('screen_name', None)
-
-
-def user_name(user):
-    return ensure_user(user).get('name', None)
-
-
 def user_id(user):
     return ensure_user(user).get('id_str', None)
+
+
+def user_screen_name(user):
+    return ensure_user(user).get('screen_name', None)
