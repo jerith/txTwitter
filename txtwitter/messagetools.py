@@ -21,9 +21,21 @@ def tweet_user_mentions(message):
     return ensure_tweet(message)['entities'].get('user_mentions', [])
 
 
+def tweet_id(message):
+    return ensure_tweet(message)['id_str']
+
+
 def tweet_in_reply_to_id(message):
     return ensure_tweet(message).get('in_reply_to_status_id_str', None)
 
 
+def tweet_in_reply_to_screen_name(message):
+    return ensure_tweet(message).get('in_reply_to_screen_name', None)
+
+
 def tweet_is_reply(message):
     return tweet_in_reply_to_id(message) is not None
+
+
+def tweet_user(message):
+    return ensure_tweet(message)['user']

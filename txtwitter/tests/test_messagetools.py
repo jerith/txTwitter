@@ -42,6 +42,24 @@ class TestTweetFunctions(TestCase):
         msg = {'friends': []}
         self.assertRaises(ValueError, self.messagetools.ensure_tweet, msg)
 
+    def test_tweet_id(self):
+        """
+        tweet_id() should return the `id_str` field of a tweet message.
+        """
+        msg = {
+            'id_str': '12345',
+            'text': 'This is a tweet.',
+            'user': {},
+        }
+        self.assertEqual('12345', self.messagetools.tweet_id(msg))
+
+    def test_tweet_id_nontweet(self):
+        """
+        tweet_id() should rase `ValueError` for a non-tweet message.
+        """
+        msg = {'friends': []}
+        self.assertRaises(ValueError, self.messagetools.tweet_id, msg)
+
     def test_tweet_text(self):
         """
         tweet_text() should return the `text` field of a tweet message.
@@ -135,6 +153,45 @@ class TestTweetFunctions(TestCase):
         self.assertRaises(
             ValueError, self.messagetools.tweet_in_reply_to_id, msg)
 
+    def test_tweet_in_reply_to_screen_name(self):
+        """
+        tweet_in_reply_to_screen_name() should return the screen name of the
+        user who's tweet this tweet message is a reply to.
+        """
+        msg = {
+            'id_str': '12345',
+            'in_reply_to_status_id_str': '12344',
+            'in_reply_to_screen_name': 'sam',
+            'text': '@fakeuser This is a reply.',
+            'user': {},
+        }
+        self.assertEqual(
+            'sam', self.messagetools.tweet_in_reply_to_screen_name(msg))
+
+    def test_tweet_in_reply_to_screen_name_nonreply(self):
+        """
+        tweet_in_reply_to_screen_name() should return `None` if this tweet
+        message is not a reply.
+        """
+        msg = {
+            'id_str': '12345',
+            'in_reply_to_status_id_str': None,
+            'in_reply_to_screen_name': None,
+            'text': '@fakeuser This is a reply.',
+            'user': {},
+        }
+        self.assertEqual(
+            None, self.messagetools.tweet_in_reply_to_screen_name(msg))
+
+    def test_tweet_in_reply_to_screen_name_nontweet(self):
+        """
+        tweet_in_reply_to_screen_name() should rase `ValueError` for a
+        non-tweet message.
+        """
+        msg = {'friends': []}
+        self.assertRaises(
+            ValueError, self.messagetools.tweet_in_reply_to_screen_name, msg)
+
     def test_tweet_is_reply(self):
         """
         tweet_in_reply_to_id() should return `True` if this tweet message is a
@@ -167,3 +224,24 @@ class TestTweetFunctions(TestCase):
         """
         msg = {'friends': []}
         self.assertRaises(ValueError, self.messagetools.tweet_is_reply, msg)
+
+    def test_tweet_user(self):
+        """
+        tweet_user() should return the `user` field of a tweet message.
+        """
+        msg = {
+            'id_str': '12345',
+            'text': 'This is a tweet.',
+            'user': {
+                'id_str': '67890',
+                'screen_name': 'luke',
+            },
+        }
+        self.assertEqual(msg['user'], self.messagetools.tweet_user(msg))
+
+    def test_tweet_user_nontweet(self):
+        """
+        tweet_user() should rase `ValueError` for a non-tweet message.
+        """
+        msg = {'friends': []}
+        self.assertRaises(ValueError, self.messagetools.tweet_user, msg)
