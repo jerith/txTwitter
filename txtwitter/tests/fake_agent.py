@@ -4,14 +4,17 @@ from urlparse import parse_qsl, urlsplit, urlunsplit
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.python.failure import Failure
 from twisted.web.client import ResponseDone
-from twisted.web.http import RESPONSES
+from twisted.web.http import PotentialDataLoss, RESPONSES
 
 
 class FakeTransport(object):
     disconnecting = False
 
+    def __init__(self, fake_response):
+        self._fake_response = fake_response
+
     def stopProducing(self):
-        pass
+        self._fake_response.finished(Failure(PotentialDataLoss()))
 
 
 class FakeResponse(object):
@@ -33,7 +36,7 @@ class FakeResponse(object):
 
     def deliverBody(self, protocol):
         self._protocol = protocol
-        protocol.makeConnection(FakeTransport())
+        protocol.makeConnection(FakeTransport(self))
         if self._body is not None:
             self.deliver_data(self._body)
             self.finished()

@@ -1,6 +1,7 @@
 import json
 
 from twisted.application.service import Service
+from twisted.internet.defer import CancelledError
 from twisted.protocols.basic import LineOnlyReceiver
 from twisted.protocols.policies import TimeoutMixin
 from twisted.python.failure import Failure
@@ -60,6 +61,7 @@ class TwitterStreamService(Service):
 
     clock = None
 
+    _connect_d = None
     _stream_response = None
     _stream_protocol = None
     _reconnect_delayedcall = None
@@ -88,6 +90,11 @@ class TwitterStreamService(Service):
         if self._reconnect_delayedcall is not None:
             self._reconnect_delayedcall.cancel()
             self._reconnect_delayedcall = None
+        if self._connect_d is not None:
+            self._connect_d.addErrback(lambda f: f.trap(CancelledError))
+            self._connect_d.cancel()
+            self._connect_d = None
+        self.reconnect_delay = 0
 
     def connection_lost(self, reason):
         self._stream_response = None
@@ -105,6 +112,7 @@ class TwitterStreamService(Service):
         self.disconnect_callback = callback
 
     def _setup_stream(self, response):
+        self._connect_d = None
         if response.code != 200:
             self._handle_HTTP_error(response)
             return
@@ -128,7 +136,8 @@ class TwitterStreamService(Service):
 
     def _connect(self):
         self._reconnect_delayedcall = None
-        self.connect_func().addCallback(self._setup_stream)
+        self._connect_d = self.connect_func()
+        self._connect_d.addCallback(self._setup_stream)
 
     def _reconnect(self):
         if not self.running:

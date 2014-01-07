@@ -2,6 +2,7 @@ from twisted.internet.defer import Deferred
 from twisted.internet.task import Clock
 from twisted.python.failure import Failure
 from twisted.trial.unittest import TestCase
+from twisted.web.client import ResponseDone
 
 
 class TestTwitterClient(TestCase):
@@ -221,3 +222,66 @@ class TestTwitterClient(TestCase):
 
         d.callback(self._FakeResponse(None, 420))
         self.assertEqual(svc.reconnect_delay, 120)
+
+    def test_stop_service_not_started(self):
+        """
+        Stopping an unstarted service should do nothing.
+        """
+        svc = self._TwitterStreamService(lambda: None, None)
+        self.assertEqual(svc.running, False)
+        svc.stopService()
+        self.assertEqual(svc.running, False)
+
+    def test_stop_service_connecting(self):
+        """
+        Stopping a connecting service should cancel the connection.
+        """
+        d = Deferred()
+        called = []
+        svc = self._TwitterStreamService(lambda: d, None)
+        svc.set_disconnect_callback(lambda s, r: called.append(r))
+        svc.startService()
+        self.assertEqual(svc.running, True)
+
+        svc.stopService()
+        self.assertEqual(svc.running, False)
+        self.assertEqual(called, [])
+
+    def test_stop_service_connected(self):
+        """
+        Stopping a connected service should close the connection cleanly.
+        """
+        d = Deferred()
+        called = []
+        svc = self._TwitterStreamService(lambda: d, None)
+        svc.set_disconnect_callback(lambda s, r: called.append(r))
+        svc.startService()
+        d.callback(self._FakeResponse(None))
+        self.assertEqual(svc.running, True)
+
+        svc.stopService()
+        self.assertEqual(svc.running, False)
+        [failure] = called
+        self.assertEqual(ResponseDone, type(failure.value))
+
+    def test_stop_service_pending_reconnect(self):
+        """
+        Stopping a service with a pending reconnect should cancel the
+        reconnect.
+        """
+        d = Deferred()
+        called = []
+        svc = self._TwitterStreamService(lambda: d, None)
+        svc.set_disconnect_callback(lambda s, r: called.append(r))
+        svc.clock = Clock()
+        svc.startService()
+        d.callback(self._FakeResponse(None, 500))
+        self.assertEqual(svc.running, True)
+        self.assertNotEqual(svc._reconnect_delayedcall, None)
+        self.assertEqual(len(called), 1)
+        self.assertNotEqual(svc.reconnect_delay, 0)
+
+        svc.stopService()
+        self.assertEqual(svc.running, False)
+        self.assertEqual(svc._reconnect_delayedcall, None)
+        self.assertEqual(svc.reconnect_delay, 0)
