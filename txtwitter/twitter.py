@@ -116,11 +116,11 @@ def set_float_param(params, name, value, min=None, max=None):
     if min is not None and value < min:
         raise ValueError(
             "Parameter '%s' must not be less than %r, got %r." % (
-            name, min, value))
+                name, min, value))
     if max is not None and value > max:
         raise ValueError(
             "Parameter '%s' must not be greater than %r, got %r." % (
-            name, min, value))
+                name, min, value))
 
     params[name] = str(value)
 
@@ -159,11 +159,11 @@ def set_int_param(params, name, value, min=None, max=None):
     if min is not None and value < min:
         raise ValueError(
             "Parameter '%s' must not be less than %r, got %r." % (
-            name, min, value))
+                name, min, value))
     if max is not None and value > max:
         raise ValueError(
             "Parameter '%s' must not be greater than %r, got %r." % (
-            name, min, value))
+                name, min, value))
 
     params[name] = str(value)
 
