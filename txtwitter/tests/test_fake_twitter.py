@@ -170,7 +170,26 @@ class TestFakeTwitterAPI(TestCase):
 
     # TODO: More tests for fake statuses_mentions_timeline()
 
-    # TODO: Tests for fake statuses_user_timeline()
+    def test_dispatch_statuses_user_timeline(self):
+        self.assert_api_method_uri(
+            'statuses_user_timeline', 'statuses/user_timeline.json')
+
+    def test_statuses_user_timeline(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        twitter.add_tweet('1', 'hello', '1')
+        tweet1 = twitter.add_tweet('2', 'hello', '2')
+        twitter.add_tweet('3', 'hello @fakeuser2', '1')
+        tweet2 = twitter.add_tweet('4', 'hello @fakeuser', '2')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        mentions = api.statuses_user_timeline('2')
+        self.assertEqual(
+            mentions, [tweet2.to_dict(twitter), tweet1.to_dict(twitter)])
+
+    # TODO: More tests for fake statuses_user_timeline()
+
     # TODO: Tests for fake statuses_home_timeline()
     # TODO: Tests for fake statuses_retweets_of_me()
 

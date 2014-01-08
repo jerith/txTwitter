@@ -194,6 +194,11 @@ class FakeTwitterData(object):
             if user.screen_name == screen_name:
                 return user
 
+    def iter_tweets_from(self, user_id_str):
+        for tweet in self.tweets.itervalues():
+            if tweet.user_id_str == user_id_str:
+                yield tweet
+
     def iter_tweets_mentioning(self, user_id_str):
         user = self.get_user(user_id_str)
         mention = '@%s' % (user.screen_name,)
@@ -305,13 +310,9 @@ class FakeTwitterAPI(object):
 
     # Timelines
 
-    @fake_api('statuses/mentions_timeline.json')
-    def statuses_mentions_timeline(self, count=None, since_id=None,
-                                   max_id=None, trim_user=None,
-                                   contributor_details=None,
-                                   include_entities=None):
+    def _filter_timeline(self, tweets_iter, count, since_id, max_id):
         tweets = []
-        for tweet in self._twitter_data.iter_tweets_mentioning(self._user):
+        for tweet in tweets_iter:
             tweet_id = int(tweet.id_str)
             if since_id is not None and tweet_id <= int(since_id):
                 continue
@@ -322,13 +323,22 @@ class FakeTwitterAPI(object):
             count = 20
         if count > 200:
             count = 200
+        return sorted(tweets, reverse=True)[:count]
 
+    @fake_api('statuses/mentions_timeline.json')
+    def statuses_mentions_timeline(self, count=None, since_id=None,
+                                   max_id=None, trim_user=None,
+                                   contributor_details=None,
+                                   include_entities=None):
+        tweets = self._filter_timeline(
+            self._twitter_data.iter_tweets_mentioning(self._user), count,
+            since_id, max_id)
         return [
             tweet.to_dict(
                 self._twitter_data, trim_user=trim_user,
                 contributor_details=contributor_details,
                 include_entities=include_entities)
-            for tweet in sorted(tweets, reverse=True)[:count]]
+            for tweet in tweets]
 
     @fake_api('statuses/user_timeline.json')
     def statuses_user_timeline(self, user_id=None, screen_name=None,
@@ -336,7 +346,25 @@ class FakeTwitterAPI(object):
                                trim_user=None, exclude_replies=None,
                                contributor_details=None,
                                include_rts=None):
-        raise NotImplementedError()
+        if user_id is None and screen_name is not None:
+            user = self._twitter_data.get_user_by_screen_name(screen_name)
+            user_id = user.id_str
+            screen_name = None
+        if user_id is None or screen_name is not None:
+            raise NotImplementedError("user_id/screen_name params")
+
+        tweets = self._filter_timeline(
+            self._twitter_data.iter_tweets_from(user_id), count, since_id,
+            max_id)
+        if exclude_replies:
+            tweets = [tweet for tweet in tweets if tweet.reply_to is not None]
+        if include_rts is not None:
+            raise NotImplementedError("exclude_rts param")
+        return [
+            tweet.to_dict(
+                self._twitter_data, trim_user=trim_user,
+                contributor_details=contributor_details)
+            for tweet in tweets]
 
     @fake_api('statuses/home_timeline.json')
     def statuses_home_timeline(self, count=None, since_id=None, max_id=None,
