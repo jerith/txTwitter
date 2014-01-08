@@ -91,7 +91,7 @@ class FakeTweet(object):
         }
         # Calculated values
         tweet_dict.update({
-            'id': tweet_dict['id_str'],
+            'id': int(tweet_dict['id_str']),
             'favorited': tweet_dict['favorite_count'] > 0,
             'retweeted': tweet_dict['retweet_count'] > 0,
         })
@@ -133,7 +133,7 @@ class FakeUser(object):
         }
         # Calculated values
         user_dict.update({
-            'id': user_dict['id_str'],
+            'id': int(user_dict['id_str']),
         })
         # Provided keyword args can override any of the above
         user_dict.update(self.kw)
