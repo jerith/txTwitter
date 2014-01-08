@@ -35,7 +35,7 @@ class FakeTweet(object):
             return {}
 
         reply_to_tweet = twitter_data.get_tweet(self.reply_to)
-        reply_to_user = reply_to_tweet.get_user()
+        reply_to_user = reply_to_tweet.get_user(twitter_data)
 
         return {
             'in_reply_to_status_id': int(reply_to_tweet.id_str),
