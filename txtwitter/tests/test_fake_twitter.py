@@ -1,0 +1,270 @@
+from urllib import urlencode
+
+from twisted.trial.unittest import TestCase
+
+
+class TestFakeTwitter(TestCase):
+    def _FakeTwitter(self):
+        from txtwitter.tests.fake_twitter import FakeTwitter
+        return FakeTwitter()
+
+    def test_get_client(self):
+        from txtwitter.tests.fake_twitter import FakeTwitterClient
+        twitter = self._FakeTwitter()
+        client = twitter.get_client()
+        self.assertEqual(FakeTwitterClient, type(client))
+        self.assertEqual(client._fake_twitter_user, None)
+
+    def test_get_client_user(self):
+        from txtwitter.tests.fake_twitter import FakeTwitterClient
+        twitter = self._FakeTwitter()
+        client = twitter.get_client('42')
+        self.assertEqual(FakeTwitterClient, type(client))
+        self.assertEqual(client._fake_twitter_user, '42')
+
+
+class TestFakeTwitterClient(TestCase):
+    def _FakeTwitter(self):
+        from txtwitter.tests.fake_twitter import FakeTwitter
+        return FakeTwitter()
+
+    def _FakeTwitterClient(self, user_id_str=None, fake_twitter=None):
+        if fake_twitter is None:
+            fake_twitter = self._FakeTwitter()
+        return fake_twitter.get_client(user_id_str)
+
+    def test_call_statuses_show_404(self):
+        client = self._FakeTwitterClient()
+        failure = self.failureResultOf(client.statuses_show('1'))
+        self.assertEqual(failure.value.args[0], 404)
+
+    def test_call_statuses_show(self):
+        twitter = self._FakeTwitter()
+        twitter.twitter_data.add_user('1', 'fakeuser')
+        twitter.twitter_data.add_tweet('1', 'hello', '1')
+        client = self._FakeTwitterClient(fake_twitter=twitter)
+        tweet = self.successResultOf(client.statuses_show('1'))
+        self.assertEqual(tweet['text'], 'hello')
+
+
+class TestFakeTwitterAPI(TestCase):
+    def _FakeTwitterData(self):
+        from txtwitter.tests.fake_twitter import FakeTwitterData
+        return FakeTwitterData()
+
+    def _FakeTwitterAPI(self, twitter_data=None, user=None):
+        from txtwitter.tests.fake_twitter import FakeTwitterAPI
+        if twitter_data is None:
+            twitter_data = self._FakeTwitterData()
+        return FakeTwitterAPI(twitter_data, user)
+
+    def _FakeTwitter(self):
+        from txtwitter.tests.fake_twitter import FakeTwitter
+        return FakeTwitter()
+
+    def _build_uri(self, base, path, params=None):
+        uri = '%s%s' % (base, path)
+        if params:
+            uri += '?' + urlencode(params)
+        return uri
+
+    def _api_uri(self, path, params=None):
+        from txtwitter.twitter import TWITTER_API_URL
+        return self._build_uri(TWITTER_API_URL, path, params)
+
+    def assert_method_uri(self, method_name, uri):
+        method = self._FakeTwitter().get_api_method(None, uri)
+        self.assertEqual(method_name, method.__name__)
+
+    def assert_api_method_uri(self, method_name, uri_path):
+        self.assert_method_uri(method_name, self._api_uri(uri_path))
+
+    # Timelines
+
+    # TODO: Tests for fake statuses_mentions_timeline()
+    # TODO: Tests for fake statuses_user_timeline()
+    # TODO: Tests for fake statuses_home_timeline()
+    # TODO: Tests for fake statuses_retweets_of_me()
+
+    # Tweets
+
+    # TODO: Tests for fake statuses_retweets()
+
+    def test_dispatch_statuses_show(self):
+        self.assert_api_method_uri('statuses_show', 'statuses/show.json')
+
+    def test_statuses_show(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser')
+        twitter.add_tweet('1', 'hello', '1')
+
+        api = self._FakeTwitterAPI(twitter)
+        tweet = api.statuses_show('1')
+        self.assertEqual('hello', tweet['text'])
+        self.assertEqual('fakeuser', tweet['user']['screen_name'])
+
+    # TODO: More tests for fake statuses_show()
+
+    def test_dispatch_statuses_destroy(self):
+        self.assert_api_method_uri('statuses_destroy', 'statuses/destroy.json')
+
+    def test_statuses_destroy(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser')
+        twitter.add_tweet('1', 'hello', '1')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        tweet = api.statuses_destroy('1')
+        self.assertEqual('hello', tweet['text'])
+        self.assertEqual('fakeuser', tweet['user']['screen_name'])
+        self.assertEqual(twitter.tweets, {})
+
+    # TODO: More tests for fake statuses_destroy()
+
+    def test_dispatch_statuses_update(self):
+        self.assert_api_method_uri('statuses_update', 'statuses/update.json')
+
+    def test_statuses_update(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        tweet = api.statuses_update('hello')
+        self.assertEqual('hello', tweet['text'])
+        self.assertEqual('fakeuser', tweet['user']['screen_name'])
+        self.assertEqual(twitter.tweets.keys(), [tweet['id_str']])
+
+    # TODO: More tests for fake statuses_update()
+
+    # TODO: Tests for fake statuses_retweet()
+    # TODO: Tests for fake statuses_update_with_media()
+    # TODO: Tests for fake statuses_oembed()
+    # TODO: Tests for fake statuses_retweeters_ids()
+
+    # Search
+
+    # TODO: Tests for fake search_tweets()
+
+    # Streaming
+
+    # TODO: Tests for fake stream_filter()
+    # TODO: Tests for fake stream_sample()
+    # TODO: Tests for fake stream_firehose()
+    # TODO: Tests for fake userstream_user()
+
+    # Direct Messages
+
+    # TODO: Tests for fake direct_messages()
+    # TODO: Tests for fake direct_messages_sent()
+    # TODO: Tests for fake direct_messages_show()
+    # TODO: Tests for fake direct_messages_destroy()
+    # TODO: Tests for fake direct_messages_new()
+
+    # Friends & Followers
+
+    # TODO: Tests for fake friendships_no_retweets_ids()
+    # TODO: Tests for fake friends_ids()
+    # TODO: Tests for fake followers_ids()
+    # TODO: Tests for fake friendships_lookup()
+    # TODO: Tests for fake friendships_incoming()
+    # TODO: Tests for fake friendships_outgoing()
+    # TODO: Tests for fake friendships_create()
+    # TODO: Tests for fake friendships_destroy()
+    # TODO: Tests for fake friendships_update()
+    # TODO: Tests for fake friendships_show()
+    # TODO: Tests for fake friends_list()
+    # TODO: Tests for fake followers_list()
+
+    # Users
+
+    # TODO: Tests for fake account_settings()
+    # TODO: Tests for fake account_verify_credentials()
+    # TODO: Tests for fake account_settings()
+    # TODO: Tests for fake account_update_delivery_device()
+    # TODO: Tests for fake account_update_profile()
+    # TODO: Tests for fake account_update_profile_background_image()
+    # TODO: Tests for fake account_update_profile_colors()
+    # TODO: Tests for fake account_update_profile_image()
+    # TODO: Tests for fake blocks_list()
+    # TODO: Tests for fake blocks_ids()
+    # TODO: Tests for fake blocks_create()
+    # TODO: Tests for fake blocks_destroy()
+    # TODO: Tests for fake users_lookup()
+    # TODO: Tests for fake users_show()
+    # TODO: Tests for fake users_search()
+    # TODO: Tests for fake users_contributees()
+    # TODO: Tests for fake users_contributors()
+    # TODO: Tests for fake account_remove_profile_banner()
+    # TODO: Tests for fake account_update_profile_banner()
+    # TODO: Tests for fake users/profile_banner()
+
+    # Suggested Users
+
+    # TODO: Tests for fake users_suggestions()
+    # TODO: Tests for fake users_suggestions()
+    # TODO: Tests for fake users_suggestions_members()
+
+    # Favorites
+
+    # TODO: Tests for fake favorites_list()
+    # TODO: Tests for fake favorites_destroy()
+    # TODO: Tests for fake favorites_create()
+
+    # Lists
+
+    # TODO: Tests for fake lists_list()
+    # TODO: Tests for fake lists_statuses()
+    # TODO: Tests for fake lists_members_destroy()
+    # TODO: Tests for fake lists_memberships()
+    # TODO: Tests for fake lists_subscribers()
+    # TODO: Tests for fake lists_subscribers/create()
+    # TODO: Tests for fake lists_subscribers/show()
+    # TODO: Tests for fake lists_subscribers/destroy()
+    # TODO: Tests for fake lists_members_create_all()
+    # TODO: Tests for fake lists_members_show()
+    # TODO: Tests for fake lists_members()
+    # TODO: Tests for fake lists_members_create()
+    # TODO: Tests for fake lists_destroy()
+    # TODO: Tests for fake lists_update()
+    # TODO: Tests for fake lists_create()
+    # TODO: Tests for fake lists_show()
+    # TODO: Tests for fake lists_subscriptions()
+    # TODO: Tests for fake lists_members_destroy_all()
+    # TODO: Tests for fake lists_ownerships()
+
+    # Saved Searches
+
+    # TODO: Tests for fake saved_searches_list()
+    # TODO: Tests for fake saved_searches_show()
+    # TODO: Tests for fake saved_searches_create()
+    # TODO: Tests for fake saved_searches_destroy()
+
+    # Places & Geo
+
+    # TODO: Tests for fake geo_id()
+    # TODO: Tests for fake geo_reverse_geocode()
+    # TODO: Tests for fake geo_search()
+    # TODO: Tests for fake geo_similar_places()
+    # TODO: Tests for fake geo_place()
+
+    # Trends
+
+    # TODO: Tests for fake trends_place()
+    # TODO: Tests for fake trends_available()
+    # TODO: Tests for fake trends_closest()
+
+    # Spam Reporting
+
+    # TODO: Tests for fake users_report_spam()
+
+    # OAuth
+
+    # TODO: Decide whether any of these APIs should be implemented.
+
+    # Help
+
+    # TODO: Tests for fake help_configuration()
+    # TODO: Tests for fake help_languages()
+    # TODO: Tests for fake help_privacy()
+    # TODO: Tests for fake help_tos()
+    # TODO: Tests for fake application_rate_limit_status()
