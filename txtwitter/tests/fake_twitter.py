@@ -1,6 +1,7 @@
 from datetime import datetime
 from inspect import getmembers
 import json
+import re
 from urlparse import urlparse, parse_qsl
 
 from twisted.internet.defer import maybeDeferred
@@ -11,6 +12,9 @@ from txtwitter.twitter import (
     TwitterClient)
 
 
+USER_MENTION_RE = re.compile(r'@[a-zA-Z0-9_]+')
+
+
 class FakeTweet(object):
     def __init__(self, id_str, text, user_id_str, reply_to=None, **kw):
         self.id_str = id_str
@@ -19,6 +23,9 @@ class FakeTweet(object):
         self.reply_to = reply_to
         self.created_at = kw.pop('created_at', datetime.utcnow())
         self.kw = kw
+
+    def __cmp__(self, other):
+        return cmp(int(self.id_str), int(other.id_str))
 
     def get_user(self, twitter_data):
         return twitter_data.get_user(self.user_id_str)
@@ -39,11 +46,39 @@ class FakeTweet(object):
         }
 
     def _get_entities(self, twitter_data):
-        # TODO: This
-        return {}
+        return {
+            'user_mentions': self._get_user_mentions(twitter_data),
+            # TODO: More entities
+        }
 
-    def to_dict(self, twitter_data, trim_user=False, include_my_retweet=False,
-                include_entities=True):
+    def _get_user_mentions(self, twitter_data):
+        mentions = []
+        for match in USER_MENTION_RE.finditer(self.text):
+            user = twitter_data.get_user_by_screen_name(match.group(0)[1:])
+            if user is None:
+                continue
+            mentions.append({
+                'id_str': user.id_str,
+                'id': int(user.id_str),
+                'indices': list(match.span(0)),
+                'screen_name': user.screen_name,
+                'name': user.name,
+            })
+        return mentions
+
+    def to_dict(self, twitter_data, trim_user=None, include_my_retweet=None,
+                include_entities=None, contributor_details=None):
+        if trim_user is None:
+            trim_user = False
+        if include_my_retweet is None:
+            include_my_retweet = False
+        if include_entities is None:
+            include_entities = True
+        if contributor_details is None:
+            contributor_details = False
+        else:
+            raise NotImplementedError("contributer_details param")
+
         tweet_dict = {
             'id_str': self.id_str,
             'created_at': str(self.created_at),
@@ -81,9 +116,10 @@ class FakeTweet(object):
 
 
 class FakeUser(object):
-    def __init__(self, id_str, screen_name, **kw):
+    def __init__(self, id_str, screen_name, name, **kw):
         self.id_str = id_str
         self.screen_name = screen_name
+        self.name = name
         self.created_at = kw.pop('created_at', datetime.utcnow())
         self.kw = kw
 
@@ -91,6 +127,7 @@ class FakeUser(object):
         user_dict = {
             'id_str': self.id_str,
             'screen_name': self.screen_name,
+            'name': self.name,
             'created_at': str(self.created_at),
             # Defaults
         }
@@ -147,10 +184,22 @@ class FakeTwitterData(object):
         self._next_tweet_id += 10
         return tweet
 
-    def new_user(self, screen_name, *args, **kw):
-        user = self.add_user(self.next_user_id, screen_name, *args, **kw)
+    def new_user(self, screen_name, name, *args, **kw):
+        user = self.add_user(self.next_user_id, screen_name, name, *args, **kw)
         self._next_user_id += 10
         return user
+
+    def get_user_by_screen_name(self, screen_name):
+        for user in self.users.itervalues():
+            if user.screen_name == screen_name:
+                return user
+
+    def iter_tweets_mentioning(self, user_id_str):
+        user = self.get_user(user_id_str)
+        mention = '@%s' % (user.screen_name,)
+        for tweet in self.tweets.itervalues():
+            if mention in tweet.text:
+                yield tweet
 
 
 class FakeTwitterClient(TwitterClient):
@@ -180,6 +229,9 @@ class FakeTwitter(object):
             'userstream': userstream_url,
         }
         self.twitter_data = FakeTwitterData()
+
+    def __getattr__(self, name):
+        return getattr(self.twitter_data, name)
 
     def get_client(self, user_id_str=None):
         return FakeTwitterClient(
@@ -258,7 +310,25 @@ class FakeTwitterAPI(object):
                                    max_id=None, trim_user=None,
                                    contributor_details=None,
                                    include_entities=None):
-        raise NotImplementedError()
+        tweets = []
+        for tweet in self._twitter_data.iter_tweets_mentioning(self._user):
+            tweet_id = int(tweet.id_str)
+            if since_id is not None and tweet_id <= int(since_id):
+                continue
+            if max_id is not None and tweet_id > int(max_id):
+                continue
+            tweets.append(tweet)
+        if count is None:
+            count = 20
+        if count > 200:
+            count = 200
+
+        return [
+            tweet.to_dict(
+                self._twitter_data, trim_user=trim_user,
+                contributor_details=contributor_details,
+                include_entities=include_entities)
+            for tweet in sorted(tweets, reverse=True)[:count]]
 
     @fake_api('statuses/user_timeline.json')
     def statuses_user_timeline(self, user_id=None, screen_name=None,

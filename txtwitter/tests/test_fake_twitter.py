@@ -3,6 +3,75 @@ from urllib import urlencode
 from twisted.trial.unittest import TestCase
 
 
+class TestFakeTweet(TestCase):
+    def _FakeTweet(self, *args, **kw):
+        from txtwitter.tests.fake_twitter import FakeTweet
+        return FakeTweet(*args, **kw)
+
+    def _FakeTwitterData(self):
+        from txtwitter.tests.fake_twitter import FakeTwitterData
+        return FakeTwitterData()
+
+    def test__get_user_mentions_none(self):
+        twitter = self._FakeTwitterData()
+        tweet = self._FakeTweet('1', 'hello', '1')
+        self.assertEqual([], tweet._get_user_mentions(twitter))
+
+    def test__get_user_mentions_not_user(self):
+        twitter = self._FakeTwitterData()
+        tweet = self._FakeTweet('1', 'hello @notuser', '1')
+        self.assertEqual([], tweet._get_user_mentions(twitter))
+
+    def test__get_user_mentions_one_user(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        tweet = self._FakeTweet('1', 'hello @fakeuser', '1')
+        self.assertEqual(tweet._get_user_mentions(twitter), [{
+            'id_str': '1',
+            'id': 1,
+            'indices': [6, 15],
+            'screen_name': 'fakeuser',
+            'name': 'Fake User',
+        }])
+
+    def test__get_user_mentions_two_users(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        tweet = self._FakeTweet('1', 'hello @fakeuser @fakeuser2', '1')
+        self.assertEqual(tweet._get_user_mentions(twitter), [{
+            'id_str': '1',
+            'id': 1,
+            'indices': [6, 15],
+            'screen_name': 'fakeuser',
+            'name': 'Fake User',
+        }, {
+            'id_str': '2',
+            'id': 2,
+            'indices': [16, 26],
+            'screen_name': 'fakeuser2',
+            'name': 'Fake User',
+        }])
+
+    def test__get_user_mentions_one_user_twice(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        tweet = self._FakeTweet('1', 'hello @fakeuser @fakeuser', '1')
+        self.assertEqual(tweet._get_user_mentions(twitter), [{
+            'id_str': '1',
+            'id': 1,
+            'indices': [6, 15],
+            'screen_name': 'fakeuser',
+            'name': 'Fake User',
+        }, {
+            'id_str': '1',
+            'id': 1,
+            'indices': [16, 25],
+            'screen_name': 'fakeuser',
+            'name': 'Fake User',
+        }])
+
+
 class TestFakeTwitter(TestCase):
     def _FakeTwitter(self):
         from txtwitter.tests.fake_twitter import FakeTwitter
@@ -40,8 +109,8 @@ class TestFakeTwitterClient(TestCase):
 
     def test_call_statuses_show(self):
         twitter = self._FakeTwitter()
-        twitter.twitter_data.add_user('1', 'fakeuser')
-        twitter.twitter_data.add_tweet('1', 'hello', '1')
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_tweet('1', 'hello', '1')
         client = self._FakeTwitterClient(fake_twitter=twitter)
         tweet = self.successResultOf(client.statuses_show('1'))
         self.assertEqual(tweet['text'], 'hello')
@@ -81,7 +150,26 @@ class TestFakeTwitterAPI(TestCase):
 
     # Timelines
 
-    # TODO: Tests for fake statuses_mentions_timeline()
+    def test_dispatch_statuses_mentions_timeline(self):
+        self.assert_api_method_uri(
+            'statuses_mentions_timeline', 'statuses/mentions_timeline.json')
+
+    def test_statuses_mentions_timeline(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        twitter.add_tweet('1', 'hello', '1')
+        twitter.add_tweet('2', 'hello', '2')
+        mention1 = twitter.add_tweet('3', 'hello @fakeuser', '2')
+        mention2 = twitter.add_tweet('4', 'hello again @fakeuser', '2')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        mentions = api.statuses_mentions_timeline()
+        self.assertEqual(
+            mentions, [mention2.to_dict(twitter), mention1.to_dict(twitter)])
+
+    # TODO: More tests for fake statuses_mentions_timeline()
+
     # TODO: Tests for fake statuses_user_timeline()
     # TODO: Tests for fake statuses_home_timeline()
     # TODO: Tests for fake statuses_retweets_of_me()
@@ -95,7 +183,7 @@ class TestFakeTwitterAPI(TestCase):
 
     def test_statuses_show(self):
         twitter = self._FakeTwitterData()
-        twitter.add_user('1', 'fakeuser')
+        twitter.add_user('1', 'fakeuser', 'Fake User')
         twitter.add_tweet('1', 'hello', '1')
 
         api = self._FakeTwitterAPI(twitter)
@@ -110,7 +198,7 @@ class TestFakeTwitterAPI(TestCase):
 
     def test_statuses_destroy(self):
         twitter = self._FakeTwitterData()
-        twitter.add_user('1', 'fakeuser')
+        twitter.add_user('1', 'fakeuser', 'Fake User')
         twitter.add_tweet('1', 'hello', '1')
 
         api = self._FakeTwitterAPI(twitter, '1')
@@ -126,7 +214,7 @@ class TestFakeTwitterAPI(TestCase):
 
     def test_statuses_update(self):
         twitter = self._FakeTwitterData()
-        twitter.add_user('1', 'fakeuser')
+        twitter.add_user('1', 'fakeuser', 'Fake User')
 
         api = self._FakeTwitterAPI(twitter, '1')
         tweet = api.statuses_update('hello')
