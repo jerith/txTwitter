@@ -472,7 +472,9 @@ class FakeTwitterAPI(object):
 
     @fake_api('user.json', 'userstream')
     def userstream_user(self, stringify_friend_ids, stall_warnings=None,
-                        with_='followings', replies=None):
+                        with_='followings', replies=None, **kw):
+        with_ = kw.pop('with', with_)
+        assert kw == {}
         user = self._twitter_data.get_user(self._user_id_str)
         mention_re = re.compile(r'@%s\b' % (user.screen_name,))
 
