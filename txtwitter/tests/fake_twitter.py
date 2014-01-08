@@ -223,18 +223,18 @@ class FakeTwitterData(object):
 
 
 class FakeTwitterClient(TwitterClient):
-    def __init__(self, fake_twitter, fake_twitter_user,
+    def __init__(self, fake_twitter, user_id_str,
                  api_url=TWITTER_API_URL, stream_url=TWITTER_STREAM_URL,
                  userstream_url=TWITTER_USERSTREAM_URL):
         self._fake_twitter = fake_twitter
-        self._fake_twitter_user = fake_twitter_user
+        self._fake_twitter_user_id_str = user_id_str
         self._api_url_base = api_url
         self._stream_url_base = stream_url
         self._userstream_url_base = userstream_url
 
     def _make_request(self, method, uri, body_parameters=None):
         return self._fake_twitter.dispatch(
-            self._fake_twitter_user, method, uri, body_parameters)
+            self._fake_twitter_user_id_str, method, uri, body_parameters)
 
     def _parse_response(self, response):
         return response
@@ -301,9 +301,9 @@ def fake_api(path, host_prefix='api'):
 
 
 class FakeTwitterAPI(object):
-    def __init__(self, twitter_data, user):
+    def __init__(self, twitter_data, user_id_str):
         self._twitter_data = twitter_data
-        self._user = user
+        self._user_id_str = user_id_str
 
     def _404(self):
         raise TwitterAPIError(404, "Not Found", json.dumps({
@@ -346,8 +346,8 @@ class FakeTwitterAPI(object):
                                    contributor_details=None,
                                    include_entities=None):
         tweets = self._filter_timeline(
-            self._twitter_data.iter_tweets_mentioning(self._user), count,
-            since_id, max_id)
+            self._twitter_data.iter_tweets_mentioning(self._user_id_str),
+            count, since_id, max_id)
         return [
             tweet.to_dict(
                 self._twitter_data, trim_user=trim_user,
@@ -408,7 +408,7 @@ class FakeTwitterAPI(object):
     def statuses_destroy(self, id, trim_user=None):
         tweet = self._tweet_or_404(id)
         # TODO: Better error
-        if tweet.user_id_str != self._user:
+        if tweet.user_id_str != self._user_id_str:
             raise NotImplementedError()
         tweet_dict = tweet.to_dict(self._twitter_data, trim_user=trim_user)
         self._twitter_data.del_tweet(id)
@@ -421,7 +421,7 @@ class FakeTwitterAPI(object):
         if set([lat, long, place_id, display_coordinates]) != set([None]):
             raise NotImplementedError("Unsupported parameter")
         tweet = self._twitter_data.new_tweet(
-            status, self._user, reply_to=in_reply_to_status_id)
+            status, self._user_id_str, reply_to=in_reply_to_status_id)
         return tweet.to_dict(self._twitter_data, trim_user=trim_user)
 
     @fake_api('statuses/retweet.json')
@@ -473,14 +473,14 @@ class FakeTwitterAPI(object):
     @fake_api('user.json', 'userstream')
     def userstream_user(self, stall_warnings=None, with_='followings',
                         replies=None):
-        screen_name = self._twitter_data.get_user(self._user).screen_name
-        mention_re = re.compile(r'@%s\b' % (screen_name,))
+        user = self._twitter_data.get_user(self._user_id_str)
+        mention_re = re.compile(r'@%s\b' % (user.screen_name,))
 
         if with_ != 'user':
             raise NotImplementedError("with != followings")
 
         def userstream_predicate(tweet):
-            if tweet.user_id_str == self._user:
+            if tweet.user_id_str == self._user_id_str:
                 return True
             if mention_re.search(tweet.text):
                 return True

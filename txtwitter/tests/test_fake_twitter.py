@@ -84,14 +84,14 @@ class TestFakeTwitter(TestCase):
         twitter = self._FakeTwitter()
         client = twitter.get_client()
         self.assertEqual(FakeTwitterClient, type(client))
-        self.assertEqual(client._fake_twitter_user, None)
+        self.assertEqual(client._fake_twitter_user_id_str, None)
 
     def test_get_client_user(self):
         from txtwitter.tests.fake_twitter import FakeTwitterClient
         twitter = self._FakeTwitter()
         client = twitter.get_client('42')
         self.assertEqual(FakeTwitterClient, type(client))
-        self.assertEqual(client._fake_twitter_user, '42')
+        self.assertEqual(client._fake_twitter_user_id_str, '42')
 
 
 class TestFakeTwitterClient(TestCase):
