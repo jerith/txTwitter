@@ -18,6 +18,8 @@ class FakeTransport(object):
 
 
 class FakeResponse(object):
+    finished_callback = None
+
     def __init__(self, body, code=200):
         self.code = code
         if code == 420:
@@ -32,6 +34,8 @@ class FakeResponse(object):
     def finished(self, reason=None):
         if reason is None:
             reason = Failure(ResponseDone("Response body fully received"))
+        if self.finished_callback is not None:
+            self.finished_callback(reason)
         self._protocol.connectionLost(reason)
 
     def deliverBody(self, protocol):

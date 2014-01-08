@@ -7,6 +7,7 @@ from urlparse import urlparse, parse_qsl
 from twisted.internet.defer import maybeDeferred
 
 from txtwitter.error import TwitterAPIError
+from txtwitter.tests.fake_agent import FakeResponse
 from txtwitter.twitter import (
     TWITTER_API_URL, TWITTER_STREAM_URL, TWITTER_USERSTREAM_URL,
     TwitterClient)
@@ -145,6 +146,7 @@ class FakeTwitterData(object):
     def __init__(self):
         self.users = {}
         self.tweets = {}
+        self.tweet_streams = {}
         self._next_tweet_id = 1000
         self._next_user_id = 1000
 
@@ -156,6 +158,12 @@ class FakeTwitterData(object):
     def next_user_id(self):
         return str(self._next_user_id)
 
+    def add_tweet_stream(self, resp, predicate):
+        self.tweet_streams[resp] = predicate
+
+    def remove_tweet_stream(self, resp):
+        self.tweet_streams.pop(resp, None)
+
     def get_tweet(self, id_str):
         return self.tweets.get(id_str)
 
@@ -165,6 +173,10 @@ class FakeTwitterData(object):
     def add_tweet(self, *args, **kw):
         tweet = FakeTweet(*args, **kw)
         self.tweets[tweet.id_str] = tweet
+        for resp, predicate in self.tweet_streams.iteritems():
+            if predicate(tweet):
+                resp.deliver_data(json.dumps(tweet.to_dict(self)))
+                resp.deliver_data('\r\n')
         return tweet
 
     def add_user(self, *args, **kw):
@@ -205,6 +217,9 @@ class FakeTwitterData(object):
         for tweet in self.tweets.itervalues():
             if mention in tweet.text:
                 yield tweet
+
+    def to_dicts(self, *objects, **kw):
+        return [obj.to_dict(self, **kw) for obj in objects]
 
 
 class FakeTwitterClient(TwitterClient):
@@ -423,18 +438,57 @@ class FakeTwitterAPI(object):
 
     # Streaming
 
+    def _make_tweet_stream(self, predicate):
+        resp = FakeResponse(None)
+
+        def finished_callback(r):
+            self._twitter_data.remove_tweet_stream(resp)
+
+        self._twitter_data.add_tweet_stream(resp, predicate)
+        resp.finished_callback = finished_callback
+        return resp
+
     @fake_api('statuses/filter.json', 'stream')
-    def stream_filter(self, delegate, follow=None, track=None, locations=None,
+    def stream_filter(self, follow=None, track=None, locations=None,
                       stall_warnings=None):
-        raise NotImplementedError()
+        track_res = []
+        if track:
+            for term in track:
+                track_res.append(re.compile(r'\b%s\b' % (re.escape(term),)))
+
+        def stream_filter_predicate(tweet):
+            for user_id_str in (follow or []):
+                if tweet.user_id_str == user_id_str:
+                    return True
+            for track_re in track_res:
+                if track_re.search(tweet.text):
+                    return True
+            return False
+
+        return self._make_tweet_stream(stream_filter_predicate)
 
     # TODO: Implement stream_sample()
     # TODO: Implement stream_firehose()
 
     @fake_api('user.json', 'userstream')
-    def userstream_user(self, delegate, stall_warnings=None,
-                        with_='followings', replies=None):
-        raise NotImplementedError()
+    def userstream_user(self, stall_warnings=None, with_='followings',
+                        replies=None):
+        screen_name = self._twitter_data.get_user(self._user).screen_name
+        mention_re = re.compile(r'@%s\b' % (screen_name,))
+
+        if with_ != 'user':
+            raise NotImplementedError("with != followings")
+
+        def userstream_predicate(tweet):
+            if tweet.user_id_str == self._user:
+                return True
+            if mention_re.search(tweet.text):
+                return True
+            if with_ == 'followings':
+                pass
+            return False
+
+        return self._make_tweet_stream(userstream_predicate)
 
     # Direct Messages
 

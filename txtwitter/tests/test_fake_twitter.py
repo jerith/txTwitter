@@ -1,5 +1,7 @@
+import json
 from urllib import urlencode
 
+from twisted.protocols.basic import LineOnlyReceiver
 from twisted.trial.unittest import TestCase
 
 
@@ -116,6 +118,15 @@ class TestFakeTwitterClient(TestCase):
         self.assertEqual(tweet['text'], 'hello')
 
 
+class FakeTwitterStreamProtocol(LineOnlyReceiver):
+    def __init__(self, delegate):
+        self.delegate = delegate
+
+    def lineReceived(self, line):
+        if line:
+            self.delegate(json.loads(line))
+
+
 class TestFakeTwitterAPI(TestCase):
     def _FakeTwitterData(self):
         from txtwitter.tests.fake_twitter import FakeTwitterData
@@ -165,8 +176,7 @@ class TestFakeTwitterAPI(TestCase):
 
         api = self._FakeTwitterAPI(twitter, '1')
         mentions = api.statuses_mentions_timeline()
-        self.assertEqual(
-            mentions, [mention2.to_dict(twitter), mention1.to_dict(twitter)])
+        self.assertEqual(mentions, twitter.to_dicts(mention2, mention1))
 
     # TODO: More tests for fake statuses_mentions_timeline()
 
@@ -185,8 +195,7 @@ class TestFakeTwitterAPI(TestCase):
 
         api = self._FakeTwitterAPI(twitter, '1')
         mentions = api.statuses_user_timeline('2')
-        self.assertEqual(
-            mentions, [tweet2.to_dict(twitter), tweet1.to_dict(twitter)])
+        self.assertEqual(mentions, twitter.to_dicts(tweet2, tweet1))
 
     # TODO: More tests for fake statuses_user_timeline()
 
@@ -254,10 +263,72 @@ class TestFakeTwitterAPI(TestCase):
 
     # Streaming
 
-    # TODO: Tests for fake stream_filter()
+    def _process_stream_response(self, resp, delegate):
+        protocol = FakeTwitterStreamProtocol(delegate)
+        resp.deliverBody(protocol)
+
+    def test_dispatch_stream_filter(self):
+        from txtwitter.twitter import TWITTER_STREAM_URL
+        uri = self._build_uri(TWITTER_STREAM_URL, 'statuses/filter.json')
+        self.assert_method_uri('stream_filter', uri)
+
+    def test_stream_filter_track(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        api = self._FakeTwitterAPI(twitter)
+        messages = []
+        resp = api.stream_filter(track=['foo', 'bar'])
+        self._process_stream_response(resp, messages.append)
+        self.assertEqual(messages, [])
+
+        twitter.new_tweet('hello', '1')
+        twitter.new_tweet('hello', '2')
+        self.assertEqual(messages, [])
+
+        tweet1 = twitter.new_tweet('foo', '1')
+        tweet2 = twitter.new_tweet('bar', '2')
+        self.assertEqual(messages, twitter.to_dicts(tweet1, tweet2))
+
+        resp.finished()
+        self.assertEqual(twitter.tweet_streams, {})
+
+    # TODO: More tests for fake stream_filter()
+
     # TODO: Tests for fake stream_sample()
     # TODO: Tests for fake stream_firehose()
-    # TODO: Tests for fake userstream_user()
+
+    def test_dispatch_userstream_user(self):
+        from txtwitter.twitter import TWITTER_USERSTREAM_URL
+        uri = self._build_uri(TWITTER_USERSTREAM_URL, 'user.json')
+        self.assert_method_uri('userstream_user', uri)
+
+    def test_userstream_user_with_user(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        messages = []
+        resp = api.userstream_user(with_='user')
+        self._process_stream_response(resp, messages.append)
+        self.assertEqual(messages, [])
+
+        tweet1 = twitter.new_tweet('hello', '1')
+        twitter.new_tweet('hello', '2')
+        self.assertEqual(messages, twitter.to_dicts(tweet1))
+
+        twitter.new_tweet('@fakeuser2', '2')
+        tweet2 = twitter.new_tweet('@fakeuser', '2')
+        self.assertEqual(messages, twitter.to_dicts(tweet1, tweet2))
+
+        resp.finished()
+        self.assertEqual(twitter.tweet_streams, {})
+
+        # TODO: Replies
+
+    # TODO: More tests for fake userstream_user()
 
     # Direct Messages
 
