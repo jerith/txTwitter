@@ -471,8 +471,8 @@ class FakeTwitterAPI(object):
     # TODO: Implement stream_firehose()
 
     @fake_api('user.json', 'userstream')
-    def userstream_user(self, stall_warnings=None, with_='followings',
-                        replies=None):
+    def userstream_user(self, stringify_friend_ids, stall_warnings=None,
+                        with_='followings', replies=None):
         user = self._twitter_data.get_user(self._user_id_str)
         mention_re = re.compile(r'@%s\b' % (user.screen_name,))
 
@@ -488,7 +488,10 @@ class FakeTwitterAPI(object):
                 pass
             return False
 
-        return self._make_tweet_stream(userstream_predicate)
+        resp = self._make_tweet_stream(userstream_predicate)
+        # TODO: Proper friends.
+        resp.deliver_data(json.dumps({'friends_str': []}) + '\r\n')
+        return resp
 
     # Direct Messages
 

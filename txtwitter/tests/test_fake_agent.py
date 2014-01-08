@@ -64,3 +64,15 @@ class TestFakeAgent(TestCase):
         resp.finished()
         body = self.successResultOf(d)
         self.assertEqual(body, 'line 1\nline 2\n')
+
+    def test_response_dynamic_delayed(self):
+        resp = self._FakeResponse(None)
+        self.assertEqual(resp.code, 200)
+        resp.deliver_data('line 1\nli')
+        d = readBody(resp)
+        self.assertNoResult(d)
+        resp.deliver_data('ne 2\n')
+        self.assertNoResult(d)
+        resp.finished()
+        body = self.successResultOf(d)
+        self.assertEqual(body, 'line 1\nline 2\n')

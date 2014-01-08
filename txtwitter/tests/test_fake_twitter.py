@@ -311,9 +311,10 @@ class TestFakeTwitterAPI(TestCase):
 
         api = self._FakeTwitterAPI(twitter, '1')
         messages = []
-        resp = api.userstream_user(with_='user')
+        resp = api.userstream_user(stringify_friend_ids='true', with_='user')
         self._process_stream_response(resp, messages.append)
-        self.assertEqual(messages, [])
+        self.assertEqual(messages, [{'friends_str': []}])
+        messages.pop(0)
 
         tweet1 = twitter.new_tweet('hello', '1')
         twitter.new_tweet('hello', '2')
