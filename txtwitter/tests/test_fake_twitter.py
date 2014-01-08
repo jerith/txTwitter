@@ -279,7 +279,7 @@ class TestFakeTwitterAPI(TestCase):
 
         api = self._FakeTwitterAPI(twitter)
         messages = []
-        resp = api.stream_filter(track=['foo', 'bar'])
+        resp = api.stream_filter(track='foo,bar')
         self._process_stream_response(resp, messages.append)
         self.assertEqual(messages, [])
 

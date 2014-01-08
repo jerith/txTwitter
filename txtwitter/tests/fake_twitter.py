@@ -453,7 +453,7 @@ class FakeTwitterAPI(object):
                       stall_warnings=None):
         track_res = []
         if track:
-            for term in track:
+            for term in track.split(','):
                 track_res.append(re.compile(r'\b%s\b' % (re.escape(term),)))
 
         def stream_filter_predicate(tweet):
