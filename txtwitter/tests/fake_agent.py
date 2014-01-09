@@ -18,27 +18,42 @@ class FakeTransport(object):
 
 
 class FakeResponse(object):
+    finished_callback = None
+    _protocol = None
+
     def __init__(self, body, code=200):
         self.code = code
         if code == 420:
             self.phrase = 'Rate Limited'
         else:
             self.phrase = RESPONSES[code]
-        self._body = body
+
+        if body is None:
+            self._body = ''
+            self._finished = False
+        else:
+            self._body = body
+            self._finished = True
 
     def deliver_data(self, data):
-        self._protocol.dataReceived(data)
+        if self._protocol is None:
+            self._body += data
+        else:
+            self._protocol.dataReceived(data)
 
     def finished(self, reason=None):
         if reason is None:
             reason = Failure(ResponseDone("Response body fully received"))
+        if self.finished_callback is not None:
+            self.finished_callback(reason)
         self._protocol.connectionLost(reason)
 
     def deliverBody(self, protocol):
         self._protocol = protocol
         protocol.makeConnection(FakeTransport(self))
-        if self._body is not None:
-            self.deliver_data(self._body)
+        self._protocol.dataReceived(self._body)
+        self._body = None
+        if self._finished:
             self.finished()
 
 
