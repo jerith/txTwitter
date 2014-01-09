@@ -5,14 +5,17 @@ from twisted.protocols.basic import LineOnlyReceiver
 from twisted.trial.unittest import TestCase
 
 
-class TestFakeTweet(TestCase):
-    def _FakeTweet(self, *args, **kw):
-        from txtwitter.tests.fake_twitter import FakeTweet
-        return FakeTweet(*args, **kw)
+def from_fake_twitter(name):
+    @property
+    def prop(self):
+        from txtwitter.tests import fake_twitter
+        return getattr(fake_twitter, name)
+    return prop
 
-    def _FakeTwitterData(self):
-        from txtwitter.tests.fake_twitter import FakeTwitterData
-        return FakeTwitterData()
+
+class TestFakeTweet(TestCase):
+    _FakeTwitterData = from_fake_twitter('FakeTwitterData')
+    _FakeTweet = from_fake_twitter('FakeTweet')
 
     def test__get_user_mentions_none(self):
         twitter = self._FakeTwitterData()
@@ -75,29 +78,24 @@ class TestFakeTweet(TestCase):
 
 
 class TestFakeTwitter(TestCase):
-    def _FakeTwitter(self):
-        from txtwitter.tests.fake_twitter import FakeTwitter
-        return FakeTwitter()
+    _FakeTwitter = from_fake_twitter('FakeTwitter')
+    _FakeTwitterClient = from_fake_twitter('FakeTwitterClient')
 
     def test_get_client(self):
-        from txtwitter.tests.fake_twitter import FakeTwitterClient
         twitter = self._FakeTwitter()
         client = twitter.get_client()
-        self.assertEqual(FakeTwitterClient, type(client))
+        self.assertEqual(self._FakeTwitterClient, type(client))
         self.assertEqual(client._fake_twitter_user_id_str, None)
 
     def test_get_client_user(self):
-        from txtwitter.tests.fake_twitter import FakeTwitterClient
         twitter = self._FakeTwitter()
         client = twitter.get_client('42')
-        self.assertEqual(FakeTwitterClient, type(client))
+        self.assertEqual(self._FakeTwitterClient, type(client))
         self.assertEqual(client._fake_twitter_user_id_str, '42')
 
 
 class TestFakeTwitterClient(TestCase):
-    def _FakeTwitter(self):
-        from txtwitter.tests.fake_twitter import FakeTwitter
-        return FakeTwitter()
+    _FakeTwitter = from_fake_twitter('FakeTwitter')
 
     def _FakeTwitterClient(self, user_id_str=None, fake_twitter=None):
         if fake_twitter is None:
@@ -128,19 +126,9 @@ class FakeTwitterStreamProtocol(LineOnlyReceiver):
 
 
 class TestFakeTwitterAPI(TestCase):
-    def _FakeTwitterData(self):
-        from txtwitter.tests.fake_twitter import FakeTwitterData
-        return FakeTwitterData()
-
-    def _FakeTwitterAPI(self, twitter_data=None, user=None):
-        from txtwitter.tests.fake_twitter import FakeTwitterAPI
-        if twitter_data is None:
-            twitter_data = self._FakeTwitterData()
-        return FakeTwitterAPI(twitter_data, user)
-
-    def _FakeTwitter(self):
-        from txtwitter.tests.fake_twitter import FakeTwitter
-        return FakeTwitter()
+    _FakeTwitter = from_fake_twitter('FakeTwitter')
+    _FakeTwitterData = from_fake_twitter('FakeTwitterData')
+    _FakeTwitterAPI = from_fake_twitter('FakeTwitterAPI')
 
     def _build_uri(self, base, path, params=None):
         uri = '%s%s' % (base, path)
@@ -214,7 +202,7 @@ class TestFakeTwitterAPI(TestCase):
         twitter.add_user('1', 'fakeuser', 'Fake User')
         twitter.add_tweet('1', 'hello', '1')
 
-        api = self._FakeTwitterAPI(twitter)
+        api = self._FakeTwitterAPI(twitter, None)
         tweet = api.statuses_show('1')
         self.assertEqual('hello', tweet['text'])
         self.assertEqual('fakeuser', tweet['user']['screen_name'])
@@ -277,7 +265,7 @@ class TestFakeTwitterAPI(TestCase):
         twitter.add_user('1', 'fakeuser', 'Fake User')
         twitter.add_user('2', 'fakeuser2', 'Fake User')
 
-        api = self._FakeTwitterAPI(twitter)
+        api = self._FakeTwitterAPI(twitter, None)
         messages = []
         resp = api.stream_filter(track='foo,bar')
         self._process_stream_response(resp, messages.append)

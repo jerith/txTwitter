@@ -6,14 +6,17 @@ from twisted.web.client import FileBodyProducer, readBody
 from twisted.web.http_headers import Headers
 
 
-class TestFakeAgent(TestCase):
-    def _FakeAgent(self):
-        from txtwitter.tests.fake_agent import FakeAgent
-        return FakeAgent()
+def from_fake_agent(name):
+    @property
+    def prop(self):
+        from txtwitter.tests import fake_agent
+        return getattr(fake_agent, name)
+    return prop
 
-    def _FakeResponse(self, *args, **kw):
-        from txtwitter.tests.fake_agent import FakeResponse
-        return FakeResponse(*args, **kw)
+
+class TestFakeAgent(TestCase):
+    _FakeAgent = from_fake_agent('FakeAgent')
+    _FakeResponse = from_fake_agent('FakeResponse')
 
     def test_unexpected_request(self):
         agent = self._FakeAgent()

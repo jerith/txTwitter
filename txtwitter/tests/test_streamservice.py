@@ -4,15 +4,19 @@ from twisted.python.failure import Failure
 from twisted.trial.unittest import TestCase
 from twisted.web.client import ResponseDone
 
+from txtwitter.tests.fake_agent import FakeResponse
+
+
+def from_streamservice(name):
+    @property
+    def prop(self):
+        from txtwitter import streamservice
+        return getattr(streamservice, name)
+    return prop
+
 
 class TestTwitterClient(TestCase):
-    def _TwitterStreamService(self, *args, **kw):
-        from txtwitter.streamservice import TwitterStreamService
-        return TwitterStreamService(*args, **kw)
-
-    def _FakeResponse(self, *args, **kw):
-        from txtwitter.tests.fake_agent import FakeResponse
-        return FakeResponse(*args, **kw)
+    _TwitterStreamService = from_streamservice('TwitterStreamService')
 
     def test_set_connect_callback(self):
         """
@@ -33,7 +37,7 @@ class TestTwitterClient(TestCase):
         svc.set_connect_callback(lambda s: called.append(s))
         svc.startService()
         self.assertEqual(called, [])
-        d.callback(self._FakeResponse(None))
+        d.callback(FakeResponse(None))
         self.assertEqual(called, [svc])
 
     def test_connect_callback_None(self):
@@ -49,7 +53,7 @@ class TestTwitterClient(TestCase):
         svc.startService()
         self.assertEqual(None, svc.connect_callback)
         self.assertEqual(None, svc._stream_response)
-        d.callback(self._FakeResponse(None))
+        d.callback(FakeResponse(None))
         self.assertNotEqual(None, svc._stream_response)
         self.assertEqual([], self.flushLoggedErrors())
 
@@ -100,7 +104,7 @@ class TestTwitterClient(TestCase):
         svc.startService()
 
         self.assertEqual(svc.reconnect_delay, 0)
-        d.callback(self._FakeResponse(None, 500))
+        d.callback(FakeResponse(None, 500))
         self.assertEqual(svc.reconnect_delay, 1)
 
     def test_HTTP_500_second_reconnect_delay(self):
@@ -115,7 +119,7 @@ class TestTwitterClient(TestCase):
         svc.startService()
 
         self.assertEqual(svc.reconnect_delay, 1)
-        d.callback(self._FakeResponse(None, 500))
+        d.callback(FakeResponse(None, 500))
         self.assertEqual(svc.reconnect_delay, 2)
 
     def test_HTTP_500_max_reconnect_delay(self):
@@ -129,7 +133,7 @@ class TestTwitterClient(TestCase):
         svc.startService()
 
         self.assertEqual(svc.reconnect_delay, 60 * 60 * 24)
-        d.callback(self._FakeResponse(None, 500))
+        d.callback(FakeResponse(None, 500))
         self.assertEqual(svc.reconnect_delay, 60 * 10)
 
     def test_HTTP_500_schedules_reconnect(self):
@@ -141,7 +145,7 @@ class TestTwitterClient(TestCase):
         svc.clock = Clock()
         svc.startService()
 
-        d.callback(self._FakeResponse(None, 500))
+        d.callback(FakeResponse(None, 500))
         self.assertEqual(svc._connect, svc._reconnect_delayedcall.func)
 
     def test_HTTP_500_calls_disconnect_callback(self):
@@ -156,7 +160,7 @@ class TestTwitterClient(TestCase):
         svc.clock = Clock()
         svc.startService()
 
-        d.callback(self._FakeResponse(None, 500))
+        d.callback(FakeResponse(None, 500))
         [failure] = called
         self.assertEqual(TwitterAPIError, type(failure.value))
 
@@ -174,12 +178,12 @@ class TestTwitterClient(TestCase):
         svc.set_connect_callback(lambda s: called.append(s))
         svc.clock = Clock()
         svc.startService()
-        d1.callback(self._FakeResponse(None, 500))
+        d1.callback(FakeResponse(None, 500))
         self.assertEqual([], called)
 
         svc.clock.advance(svc.reconnect_delay)
         self.assertEqual(svc._reconnect_delayedcall, None)
-        d2.callback(self._FakeResponse(None))
+        d2.callback(FakeResponse(None))
         self.assertEqual([svc], called)
 
     def test_rate_limit_initial_reconnect_delay(self):
@@ -193,7 +197,7 @@ class TestTwitterClient(TestCase):
         svc.startService()
 
         self.assertEqual(svc.reconnect_delay, 0)
-        d.callback(self._FakeResponse(None, 420))
+        d.callback(FakeResponse(None, 420))
         self.assertEqual(svc.reconnect_delay, 60)
 
     def test_rate_limit_initial_reconnect_delay_existing_delay(self):
@@ -207,7 +211,7 @@ class TestTwitterClient(TestCase):
         svc.reconnect_delay = 16
         svc.startService()
 
-        d.callback(self._FakeResponse(None, 420))
+        d.callback(FakeResponse(None, 420))
         self.assertEqual(svc.reconnect_delay, 60)
 
     def test_rate_limit_second_reconnect_delay(self):
@@ -220,7 +224,7 @@ class TestTwitterClient(TestCase):
         svc.reconnect_delay = 60
         svc.startService()
 
-        d.callback(self._FakeResponse(None, 420))
+        d.callback(FakeResponse(None, 420))
         self.assertEqual(svc.reconnect_delay, 120)
 
     def test_stop_service_not_started(self):
@@ -256,7 +260,7 @@ class TestTwitterClient(TestCase):
         svc = self._TwitterStreamService(lambda: d, None)
         svc.set_disconnect_callback(lambda s, r: called.append(r))
         svc.startService()
-        d.callback(self._FakeResponse(None))
+        d.callback(FakeResponse(None))
         self.assertEqual(svc.running, True)
 
         svc.stopService()
@@ -275,7 +279,7 @@ class TestTwitterClient(TestCase):
         svc.set_disconnect_callback(lambda s, r: called.append(r))
         svc.clock = Clock()
         svc.startService()
-        d.callback(self._FakeResponse(None, 500))
+        d.callback(FakeResponse(None, 500))
         self.assertEqual(svc.running, True)
         self.assertNotEqual(svc._reconnect_delayedcall, None)
         self.assertEqual(len(called), 1)

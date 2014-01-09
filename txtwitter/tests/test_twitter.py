@@ -3,27 +3,22 @@ import json
 from twisted.internet.defer import Deferred, inlineCallbacks
 from twisted.trial.unittest import TestCase
 
+from txtwitter.tests.fake_agent import FakeAgent, FakeResponse
+
+
+def from_twitter(name):
+    @property
+    def prop(self):
+        from txtwitter import twitter
+        return getattr(twitter, name)
+    return prop
+
 
 class TestParamHelpers(TestCase):
-    @property
-    def _set_bool_param(self):
-        from txtwitter.twitter import set_bool_param
-        return set_bool_param
-
-    @property
-    def _set_str_param(self):
-        from txtwitter.twitter import set_str_param
-        return set_str_param
-
-    @property
-    def _set_float_param(self):
-        from txtwitter.twitter import set_float_param
-        return set_float_param
-
-    @property
-    def _set_int_param(self):
-        from txtwitter.twitter import set_int_param
-        return set_int_param
+    _set_bool_param = from_twitter('set_bool_param')
+    _set_str_param = from_twitter('set_str_param')
+    _set_float_param = from_twitter('set_float_param')
+    _set_int_param = from_twitter('set_int_param')
 
     def test_set_bool_param_None(self):
         """
@@ -221,23 +216,13 @@ class TestParamHelpers(TestCase):
 class TestTwitterClient(TestCase):
     timeout = 1
 
-    def _TwitterClient(self, *args, **kw):
-        from txtwitter.twitter import TwitterClient
-        return TwitterClient(*args, **kw)
-
-    def _FakeAgent(self):
-        from txtwitter.tests.fake_agent import FakeAgent
-        return FakeAgent()
-
-    def _FakeResponse(self, *args, **kw):
-        from txtwitter.tests.fake_agent import FakeResponse
-        return FakeResponse(*args, **kw)
+    _TwitterClient = from_twitter('TwitterClient')
 
     def _resp_json(self, data, code=200):
-        return self._FakeResponse(json.dumps(data), code)
+        return FakeResponse(json.dumps(data), code)
 
     def _agent_and_TwitterClient(self):
-        agent = self._FakeAgent()
+        agent = FakeAgent()
         client = self._TwitterClient(
             'token-key', 'token-secret', 'consumer-key', 'consumer-secret',
             agent=agent)
@@ -624,7 +609,7 @@ class TestTwitterClient(TestCase):
     def test_stream_filter_track(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://stream.twitter.com/1.1/statuses/filter.json'
-        stream = self._FakeResponse(None)
+        stream = FakeResponse(None)
         agent.add_expected_request('POST', uri, {'track': 'foo,bar'}, stream)
 
         connected = Deferred()
@@ -654,7 +639,7 @@ class TestTwitterClient(TestCase):
     def test_stream_filter_all_params(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://stream.twitter.com/1.1/statuses/filter.json'
-        stream = self._FakeResponse(None)
+        stream = FakeResponse(None)
         expected_params = {
             'follow': 'Alice,Bob',
             'track': 'foo,bar',
@@ -680,7 +665,7 @@ class TestTwitterClient(TestCase):
     def test_userstream_user_with_user(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://userstream.twitter.com/1.1/user.json'
-        stream = self._FakeResponse(None)
+        stream = FakeResponse(None)
         agent.add_expected_request('GET', uri, {
             'stringify_friend_ids': 'true',
             'with': 'user',
@@ -716,7 +701,7 @@ class TestTwitterClient(TestCase):
     def test_userstream_user_all_params(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://userstream.twitter.com/1.1/user.json'
-        stream = self._FakeResponse(None)
+        stream = FakeResponse(None)
         agent.add_expected_request('GET', uri, {
             'stringify_friend_ids': 'true',
             'stall_warnings': 'true',
