@@ -9,11 +9,11 @@ A Twisted-based client library for Twitter's API.
 Status
 ------
 
+Very alpha, but probably usable if the functionality you need has been
+implemented.
+
 Currently very incomplete (only a small number of API calls are supported), but
 the architecture seems sound. All remaining API calls have ``TODO`` notes.
 
 There are some moderately comprehensive docstrings in the code, but proper
 documentation still needs to be written.
-
-(There is not yet a package on PyPI because I want more API coverage before
-making any kind of official release.)
