@@ -1,10 +1,10 @@
 txTwitter
 =========
 
+|txTwitter-ci|_ |txTwitter-cover|_
+
 A Twisted-based client library for Twitter's API.
 
-[![build](https://travis-ci.org/jerith/txTwitter.png?branch=develop)](https://travis-ci.org/jerith/txTwitter)
-[![coverage](https://coveralls.io/repos/jerith/txTwitter/badge.png?branch=develop)](https://coveralls.io/r/jerith/txTwitter)
 
 Status
 ------
@@ -17,3 +17,10 @@ the architecture seems sound. All remaining API calls have ``TODO`` notes.
 
 There are some moderately comprehensive docstrings in the code, but proper
 documentation still needs to be written.
+
+
+.. |txTwitter-ci| image:: https://travis-ci.org/jerith/txTwitter.png?branch=develop
+.. _txTwitter-ci: https://travis-ci.org/jerith/txTwitter
+
+.. |txTwitter-cover| image:: https://coveralls.io/repos/jerith/txTwitter/badge.png?branch=develop
+.. _txTwitter-cover: https://coveralls.io/r/jerith/txTwitter

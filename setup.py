@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 
 def readme():
-    path = os.path.join(os.path.dirname(__file__), 'README.md')
+    path = os.path.join(os.path.dirname(__file__), 'README.rst')
     return open(path, 'r').read()
 
 
