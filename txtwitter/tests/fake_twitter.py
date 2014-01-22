@@ -31,20 +31,36 @@ class FakeTweet(object):
     def get_user(self, twitter_data):
         return twitter_data.get_user(self.user_id_str)
 
-    def _get_reply_details(self, twitter_data):
+    def _get_reply_to_status_details(self, twitter_data):
         if self.reply_to is None:
             return {}
 
         reply_to_tweet = twitter_data.get_tweet(self.reply_to)
-        reply_to_user = reply_to_tweet.get_user(twitter_data)
 
         return {
             'in_reply_to_status_id': int(reply_to_tweet.id_str),
             'in_reply_to_status_id_str': reply_to_tweet.id_str,
-            'in_reply_to_user_id': int(reply_to_user.id_str),
-            'in_reply_to_user_id_str': reply_to_user.id_str,
-            'in_reply_to_screen_name': reply_to_user.screen_name,
         }
+
+    def _get_reply_to_user_details(self, twitter_data):
+        def details(id_str, screen_name):
+            return {
+                'in_reply_to_user_id': int(id_str),
+                'in_reply_to_user_id_str': id_str,
+                'in_reply_to_screen_name': screen_name,
+            }
+
+        if self.reply_to is not None:
+            reply_to_tweet = twitter_data.get_tweet(self.reply_to)
+            reply_to_user = reply_to_tweet.get_user(twitter_data)
+            return details(reply_to_user.id_str, reply_to_user.screen_name)
+
+        match = USER_MENTION_RE.match(self.text)
+        if match is not None:
+            mention = self._mention_from_match(twitter_data, match)
+            return details(mention['id_str'], mention['screen_name'])
+
+        return {}
 
     def _get_entities(self, twitter_data):
         return {
@@ -52,19 +68,26 @@ class FakeTweet(object):
             # TODO: More entities
         }
 
+    def _mention_from_match(self, twitter_data, match):
+        user = twitter_data.get_user_by_screen_name(match.group(0)[1:])
+
+        if user is None:
+            return None
+
+        return {
+            'id_str': user.id_str,
+            'id': int(user.id_str),
+            'indices': list(match.span(0)),
+            'screen_name': user.screen_name,
+            'name': user.name,
+        }
+
     def _get_user_mentions(self, twitter_data):
         mentions = []
         for match in USER_MENTION_RE.finditer(self.text):
-            user = twitter_data.get_user_by_screen_name(match.group(0)[1:])
-            if user is None:
-                continue
-            mentions.append({
-                'id_str': user.id_str,
-                'id': int(user.id_str),
-                'indices': list(match.span(0)),
-                'screen_name': user.screen_name,
-                'name': user.name,
-            })
+            mention = self._mention_from_match(twitter_data, match)
+            if mention is not None:
+                mentions.append(mention)
         return mentions
 
     def to_dict(self, twitter_data, trim_user=None, include_my_retweet=None,
@@ -104,7 +127,8 @@ class FakeTweet(object):
         else:
             user = self.get_user(twitter_data)
             tweet_dict['user'] = user.to_dict(twitter_data)
-        tweet_dict.update(self._get_reply_details(twitter_data))
+        tweet_dict.update(self._get_reply_to_status_details(twitter_data))
+        tweet_dict.update(self._get_reply_to_user_details(twitter_data))
         tweet_dict['entities'] = self._get_entities(twitter_data)
         # Provided keyword args can override any of the above
         tweet_dict.update(self.kw)

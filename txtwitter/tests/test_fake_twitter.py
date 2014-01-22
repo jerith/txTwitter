@@ -76,6 +76,58 @@ class TestFakeTweet(TestCase):
             'name': 'Fake User',
         }])
 
+    def test__get_reply_to_status_details_nonreply(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        tweet = self._FakeTweet('1', 'hello', '1')
+        self.assertEqual(tweet._get_reply_to_status_details(twitter), {})
+
+    def test__get_reply_to_status_details_reply(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+
+        twitter.add_tweet('1', 'hello', '1')
+        tweet = twitter.add_tweet('2', 'goodbye', '2', reply_to='1')
+
+        self.assertEqual(tweet._get_reply_to_status_details(twitter), {
+            'in_reply_to_status_id': 1,
+            'in_reply_to_status_id_str': '1'
+        })
+
+    def test__get_reply_to_user_details_nonmention(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        tweet = self._FakeTweet('1', 'hello', '1')
+        self.assertEqual(tweet._get_reply_to_user_details(twitter), {})
+
+    def test__get_reply_to_user_details_nonreply(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+
+        tweet = self._FakeTweet('1', '@fakeuser2 hello', '1')
+
+        self.assertEqual(tweet._get_reply_to_user_details(twitter), {
+            'in_reply_to_screen_name': 'fakeuser2',
+            'in_reply_to_user_id': 2,
+            'in_reply_to_user_id_str': '2'
+        })
+
+    def test__get_reply_to_user_details_reply(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+
+        twitter.add_tweet('1', 'hello', '1')
+        tweet = twitter.add_tweet('2', 'goodbye', '2', reply_to='1')
+
+        self.assertEqual(tweet._get_reply_to_user_details(twitter), {
+            'in_reply_to_screen_name': 'fakeuser',
+            'in_reply_to_user_id': 1,
+            'in_reply_to_user_id_str': '1'
+        })
+
 
 class TestFakeTwitter(TestCase):
     _FakeTwitter = from_fake_twitter('FakeTwitter')
