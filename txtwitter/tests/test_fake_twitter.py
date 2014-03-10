@@ -17,65 +17,6 @@ class TestFakeTweet(TestCase):
     _FakeTwitterData = from_fake_twitter('FakeTwitterData')
     _FakeTweet = from_fake_twitter('FakeTweet')
 
-    def test__get_user_mentions_none(self):
-        twitter = self._FakeTwitterData()
-        tweet = self._FakeTweet('1', 'hello', '1')
-        self.assertEqual([], tweet._get_user_mentions(twitter))
-
-    def test__get_user_mentions_not_user(self):
-        twitter = self._FakeTwitterData()
-        tweet = self._FakeTweet('1', 'hello @notuser', '1')
-        self.assertEqual([], tweet._get_user_mentions(twitter))
-
-    def test__get_user_mentions_one_user(self):
-        twitter = self._FakeTwitterData()
-        twitter.add_user('1', 'fakeuser', 'Fake User')
-        tweet = self._FakeTweet('1', 'hello @fakeuser', '1')
-        self.assertEqual(tweet._get_user_mentions(twitter), [{
-            'id_str': '1',
-            'id': 1,
-            'indices': [6, 15],
-            'screen_name': 'fakeuser',
-            'name': 'Fake User',
-        }])
-
-    def test__get_user_mentions_two_users(self):
-        twitter = self._FakeTwitterData()
-        twitter.add_user('1', 'fakeuser', 'Fake User')
-        twitter.add_user('2', 'fakeuser2', 'Fake User')
-        tweet = self._FakeTweet('1', 'hello @fakeuser @fakeuser2', '1')
-        self.assertEqual(tweet._get_user_mentions(twitter), [{
-            'id_str': '1',
-            'id': 1,
-            'indices': [6, 15],
-            'screen_name': 'fakeuser',
-            'name': 'Fake User',
-        }, {
-            'id_str': '2',
-            'id': 2,
-            'indices': [16, 26],
-            'screen_name': 'fakeuser2',
-            'name': 'Fake User',
-        }])
-
-    def test__get_user_mentions_one_user_twice(self):
-        twitter = self._FakeTwitterData()
-        twitter.add_user('1', 'fakeuser', 'Fake User')
-        tweet = self._FakeTweet('1', 'hello @fakeuser @fakeuser', '1')
-        self.assertEqual(tweet._get_user_mentions(twitter), [{
-            'id_str': '1',
-            'id': 1,
-            'indices': [6, 15],
-            'screen_name': 'fakeuser',
-            'name': 'Fake User',
-        }, {
-            'id_str': '1',
-            'id': 1,
-            'indices': [16, 25],
-            'screen_name': 'fakeuser',
-            'name': 'Fake User',
-        }])
-
     def test__get_reply_to_status_details_nonreply(self):
         twitter = self._FakeTwitterData()
         twitter.add_user('1', 'fakeuser', 'Fake User')

@@ -16,6 +16,37 @@ from txtwitter.twitter import (
 USER_MENTION_RE = re.compile(r'@[a-zA-Z0-9_]+')
 
 
+def mention_from_match(twitter_data, match):
+    user = twitter_data.get_user_by_screen_name(match.group(0)[1:])
+
+    if user is None:
+        return None
+
+    return {
+        'id_str': user.id_str,
+        'id': int(user.id_str),
+        'indices': list(match.span(0)),
+        'screen_name': user.screen_name,
+        'name': user.name,
+    }
+
+
+def extract_user_mentions(twitter_data, text):
+    mentions = []
+    for match in USER_MENTION_RE.finditer(text):
+        mention = mention_from_match(twitter_data, match)
+        if mention is not None:
+            mentions.append(mention)
+    return mentions
+
+
+def extract_entities(twitter_data, text):
+    return {
+        'user_mentions': extract_user_mentions(twitter_data, text),
+        # TODO: More entities
+    }
+
+
 class FakeTweet(object):
     def __init__(self, id_str, text, user_id_str, reply_to=None, **kw):
         self.id_str = id_str
@@ -57,38 +88,10 @@ class FakeTweet(object):
 
         match = USER_MENTION_RE.match(self.text)
         if match is not None:
-            mention = self._mention_from_match(twitter_data, match)
+            mention = mention_from_match(twitter_data, match)
             return details(mention['id_str'], mention['screen_name'])
 
         return {}
-
-    def _get_entities(self, twitter_data):
-        return {
-            'user_mentions': self._get_user_mentions(twitter_data),
-            # TODO: More entities
-        }
-
-    def _mention_from_match(self, twitter_data, match):
-        user = twitter_data.get_user_by_screen_name(match.group(0)[1:])
-
-        if user is None:
-            return None
-
-        return {
-            'id_str': user.id_str,
-            'id': int(user.id_str),
-            'indices': list(match.span(0)),
-            'screen_name': user.screen_name,
-            'name': user.name,
-        }
-
-    def _get_user_mentions(self, twitter_data):
-        mentions = []
-        for match in USER_MENTION_RE.finditer(self.text):
-            mention = self._mention_from_match(twitter_data, match)
-            if mention is not None:
-                mentions.append(mention)
-        return mentions
 
     def to_dict(self, twitter_data, trim_user=None, include_my_retweet=None,
                 include_entities=None, contributor_details=None):
@@ -129,7 +132,7 @@ class FakeTweet(object):
             tweet_dict['user'] = user.to_dict(twitter_data)
         tweet_dict.update(self._get_reply_to_status_details(twitter_data))
         tweet_dict.update(self._get_reply_to_user_details(twitter_data))
-        tweet_dict['entities'] = self._get_entities(twitter_data)
+        tweet_dict['entities'] = extract_entities(twitter_data, self.text)
         # Provided keyword args can override any of the above
         tweet_dict.update(self.kw)
 
