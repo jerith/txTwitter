@@ -15,6 +15,9 @@ from txtwitter.twitter import (
 
 USER_MENTION_RE = re.compile(r'@[a-zA-Z0-9_]+')
 
+def now():
+    return datetime.utcnow()
+
 
 def mention_from_match(twitter_data, match):
     user = twitter_data.get_user_by_screen_name(match.group(0)[1:])
@@ -53,7 +56,7 @@ class FakeTweet(object):
         self.text = text
         self.user_id_str = user_id_str
         self.reply_to = reply_to
-        self.created_at = kw.pop('created_at', datetime.utcnow())
+        self.created_at = kw.pop('created_at', now())
         self.kw = kw
 
     def __cmp__(self, other):
@@ -143,12 +146,67 @@ class FakeTweet(object):
         return tweet_dict
 
 
+class FakeDM(object):
+    def __init__(self, id_str, text, sender_id_str, recipient_id_str, **kw):
+        self.id_str = id_str
+        self.text = text
+        self.sender_id_str = sender_id_str
+        self.recipient_id_str = recipient_id_str
+        self.created_at = kw.pop('created_at', now())
+        self.kw = kw
+
+    def __cmp__(self, other):
+        return cmp(int(self.id_str), int(other.id_str))
+
+    def _get_sender_details(self, twitter_data):
+        sender = twitter_data.get_user(self.sender_id_str)
+        return {
+            'sender': sender.to_dict(twitter_data),
+            'sender_id': int(self.sender_id_str),
+            'sender_id_str': self.sender_id_str
+        }
+
+    def _get_recipient_details(self, twitter_data):
+        recipient = twitter_data.get_user(self.recipient_id_str)
+        return {
+            'recipient': recipient.to_dict(twitter_data),
+            'recipient_id': int(self.recipient_id_str),
+            'recipient_id_str': self.recipient_id_str
+        }
+
+    def to_dict(self, twitter_data, skip_status=None,
+                include_entities=None, **kw):
+        if include_entities is None:
+            include_entities = True
+        if skip_status is not None:
+            raise NotImplementedError("skip_status param")
+
+        dm_dict = {
+            'id': int(self.id_str),
+            'id_str': self.id_str,
+            'created_at': str(self.created_at),
+            'text': self.text,
+        }
+
+        dm_dict.update(self._get_sender_details(twitter_data))
+        dm_dict.update(self._get_recipient_details(twitter_data))
+        dm_dict['entities'] = extract_entities(twitter_data, self.text)
+
+        # Provided keyword args can override any of the above
+        dm_dict.update(self.kw)
+
+        if not include_entities:
+            dm_dict.pop('entities')
+
+        return dm_dict
+
+
 class FakeUser(object):
     def __init__(self, id_str, screen_name, name, **kw):
         self.id_str = id_str
         self.screen_name = screen_name
         self.name = name
-        self.created_at = kw.pop('created_at', datetime.utcnow())
+        self.created_at = kw.pop('created_at', now())
         self.kw = kw
 
     def to_dict(self, twitter_data):
@@ -172,6 +230,7 @@ class FakeUser(object):
 class FakeTwitterData(object):
     def __init__(self):
         self.users = {}
+        self.dms = {}
         self.tweets = {}
         self.tweet_streams = {}
         self._next_tweet_id = 1000
@@ -205,6 +264,11 @@ class FakeTwitterData(object):
                 resp.deliver_data(json.dumps(tweet.to_dict(self)))
                 resp.deliver_data('\r\n')
         return tweet
+
+    def add_dm(self, *args, **kw):
+        dm = FakeDM(*args, **kw)
+        self.dms[dm.id_str] = dm
+        return dm
 
     def add_user(self, *args, **kw):
         user = FakeUser(*args, **kw)
