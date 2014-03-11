@@ -430,6 +430,26 @@ class TestFakeTwitterAPI(TestCase):
         resp.finished()
         self.assertEqual(twitter.streams, {})
 
+    def test_userstream_user_with_user_dms(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        twitter.add_user('3', 'fakeuser3', 'Fake User')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        messages = []
+        resp = api.userstream_user(stringify_friend_ids='true', with_='user')
+        self._process_stream_response(resp, messages.append)
+        messages.pop(0)
+
+        dm1 = twitter.new_dm('hello', '1', '2')
+        dm2 = twitter.new_dm('hello', '2', '1')
+        twitter.new_dm('hello', '2', '3')
+        self.assertEqual(messages, twitter.to_dicts(dm1, dm2))
+
+        resp.finished()
+        self.assertEqual(twitter.streams, {})
+
         # TODO: Replies
 
     # TODO: More tests for fake userstream_user()

@@ -273,6 +273,11 @@ class FakeTwitterData(object):
             if stream.accepts('tweet', tweet):
                 stream.deliver(tweet.to_dict(self))
 
+    def broadcast_dm(self, dm):
+        for stream in self.streams.itervalues():
+            if stream.accepts('dm', dm):
+                stream.deliver(dm.to_dict(self))
+
     def add_stream(self):
         stream = FakeStream()
 
@@ -301,6 +306,7 @@ class FakeTwitterData(object):
     def add_dm(self, *args, **kw):
         dm = FakeDM(*args, **kw)
         self.dms[dm.id_str] = dm
+        self.broadcast_dm(dm)
         return dm
 
     def add_user(self, *args, **kw):
@@ -617,8 +623,16 @@ class FakeTwitterAPI(object):
                 pass
             return False
 
+        def userstream_dm_predicate(dm):
+            if dm.recipient_id_str == self._user_id_str:
+                return True
+            if dm.sender_id_str == self._user_id_str:
+                return True
+            return False
+
         stream = self._twitter_data.add_stream()
         stream.add_message_type('tweet', userstream_tweet_predicate)
+        stream.add_message_type('dm', userstream_dm_predicate)
 
         # TODO: Proper friends.
         stream.deliver({'friends_str': []})
