@@ -15,6 +15,36 @@ def from_fake_twitter(name):
     return prop
 
 
+class TestFakeStream(TestCase):
+    _FakeStream = from_fake_twitter('FakeStream')
+
+    def test_accepts(self):
+        stream = self._FakeStream()
+        stream.add_message_type('foo', lambda data: data['bar'] == 'baz')
+        self.assertTrue(stream.accepts('foo', {'bar': 'baz'}))
+        self.assertFalse(stream.accepts('foo', {'bar': 'qux'}))
+        self.assertFalse(stream.accepts('corge', {'grault': 'garply'}))
+
+    def _process_stream_response(self, resp, delegate):
+        protocol = FakeTwitterStreamProtocol(delegate)
+        resp.deliverBody(protocol)
+
+    def test_deliver(self):
+        stream = self._FakeStream()
+
+        messages = []
+        protocol = FakeTwitterStreamProtocol(messages.append)
+        stream.resp.deliverBody(protocol)
+
+        stream.deliver({'foo': 'bar'})
+        stream.deliver({'baz': 'qux'})
+
+        self.assertEqual(messages, [
+            {'foo': 'bar'},
+            {'baz': 'qux'}
+        ])
+
+
 class TestFakeTweet(TestCase):
     _FakeTwitterData = from_fake_twitter('FakeTwitterData')
     _FakeTweet = from_fake_twitter('FakeTweet')
