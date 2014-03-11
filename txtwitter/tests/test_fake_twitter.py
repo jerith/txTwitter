@@ -486,7 +486,48 @@ class TestFakeTwitterAPI(TestCase):
 
     # Direct Messages
 
-    # TODO: Tests for fake direct_messages()
+    def test_direct_messages(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        dm1 = twitter.new_dm('hello', '1', '2')
+        dm2 = twitter.new_dm('goodbye', '2', '1')
+
+        self.assertEqual(api.direct_messages(), twitter.to_dicts(dm1, dm2))
+
+    def test_direct_messages_since_id(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        dm1 = twitter.new_dm('hello', '1', '2')
+        dm2 = twitter.new_dm('goodbye', '2', '1')
+
+        self.assertEqual(
+            api.direct_messages(since_id=int(dm1.id_str)),
+            twitter.to_dicts(dm2))
+
+    def test_direct_messages_max_id(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        dm1 = twitter.new_dm('hello', '1', '2')
+        dm2 = twitter.new_dm('goodbye', '2', '1')
+        twitter.new_dm('hello again', '1', '2')
+
+        self.assertEqual(
+            api.direct_messages(max_id=int(dm2.id_str)),
+            twitter.to_dicts(dm1, dm2))
+
+
     # TODO: Tests for fake direct_messages_sent()
     # TODO: Tests for fake direct_messages_show()
     # TODO: Tests for fake direct_messages_destroy()
