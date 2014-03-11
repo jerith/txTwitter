@@ -55,9 +55,7 @@ class FakeStream(object):
         self.resp = FakeResponse(None)
         self._message_types = {}
 
-    def add_message_type(self, message_type, predicate=None):
-        if predicate is None:
-            predicate = lambda _: True
+    def add_message_type(self, message_type, predicate):
         self._message_types[message_type] = predicate
 
     def accepts(self, message_type, data):
