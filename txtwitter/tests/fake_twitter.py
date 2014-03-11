@@ -638,18 +638,22 @@ class FakeTwitterAPI(object):
         return stream.resp
 
     # Direct Messages
+    def _clamp_dms(self, dms, since_id=None, max_id=None, count=None):
+        if since_id is not None:
+            dms = [dm for dm in dms if int(dm.id_str) > since_id]
+        if max_id is not None:
+            dms = [dm for dm in dms if int(dm.id_str) <= max_id]
+
+        dms = sorted(dms, reverse=True)
+        count = 200 if count is None else min(count, 200)
+        return dms[:count]
+
     def direct_messages(self, since_id=None, max_id=None, count=None,
                         include_entities=None, skip_status=None):
-        values = self._twitter_data.dms.values()
-
-        if since_id is not None:
-            values = [v for v in values if int(v.id_str) > since_id]
-        if max_id is not None:
-            values = [v for v in values if int(v.id_str) <= max_id]
-
-        values = sorted(values)
-        count = 200 if count is None else min(count, 200)
-        return self._twitter_data.to_dicts(*values[:count])
+        dms = self._twitter_data.dms.values()
+        dms = [dm for dm in dms if dm.recipient_id_str == self._user_id_str]
+        dms = self._clamp_dms(dms, since_id, max_id, count)
+        return self._twitter_data.to_dicts(*dms)
 
     # TODO: Implement direct_messages_sent()
     # TODO: Implement direct_messages_show()
