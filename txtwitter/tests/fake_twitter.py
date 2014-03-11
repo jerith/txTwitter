@@ -50,6 +50,25 @@ def extract_entities(twitter_data, text):
     }
 
 
+class FakeStream(object):
+    def __init__(self):
+        self.resp = FakeResponse(None)
+        self._message_types = {}
+
+    def add_message_type(self, message_type, predicate=None):
+        if predicate is None:
+            predicate = lambda _: True
+        self._message_types[message_type] = predicate
+
+    def accepts(self, message_type, data):
+        predicate = self._message_types.get(message_type)
+        return predicate is not None and predicate(data)
+
+    def deliver(self, data):
+        self.resp.deliver_data(json.dumps(data))
+        self.resp.deliver_data('\r\n')
+
+
 class FakeTweet(object):
     def __init__(self, id_str, text, user_id_str, reply_to=None, **kw):
         self.id_str = id_str
@@ -232,7 +251,8 @@ class FakeTwitterData(object):
         self.users = {}
         self.dms = {}
         self.tweets = {}
-        self.tweet_streams = {}
+        self.streams = {}
+        self._next_dm_id = 1000
         self._next_tweet_id = 1000
         self._next_user_id = 1000
 
@@ -241,14 +261,30 @@ class FakeTwitterData(object):
         return str(self._next_tweet_id)
 
     @property
+    def next_dm_id(self):
+        return str(self._next_dm_id)
+
+    @property
     def next_user_id(self):
         return str(self._next_user_id)
 
-    def add_tweet_stream(self, resp, predicate):
-        self.tweet_streams[resp] = predicate
+    def broadcast_tweet(self, tweet):
+        for stream in self.streams.itervalues():
+            if stream.accepts('tweet', tweet):
+                stream.deliver(tweet.to_dict(self))
 
-    def remove_tweet_stream(self, resp):
-        self.tweet_streams.pop(resp, None)
+    def add_stream(self):
+        stream = FakeStream()
+
+        def finished_callback(r):
+            self.remove_stream(stream.resp)
+
+        stream.resp.finished_callback = finished_callback
+        self.streams[stream.resp] = stream
+        return stream
+
+    def remove_stream(self, resp):
+        self.streams.pop(resp, None)
 
     def get_tweet(self, id_str):
         return self.tweets.get(id_str)
@@ -259,10 +295,7 @@ class FakeTwitterData(object):
     def add_tweet(self, *args, **kw):
         tweet = FakeTweet(*args, **kw)
         self.tweets[tweet.id_str] = tweet
-        for resp, predicate in self.tweet_streams.iteritems():
-            if predicate(tweet):
-                resp.deliver_data(json.dumps(tweet.to_dict(self)))
-                resp.deliver_data('\r\n')
+        self.broadcast_tweet(tweet)
         return tweet
 
     def add_dm(self, *args, **kw):
@@ -278,6 +311,9 @@ class FakeTwitterData(object):
     def del_tweet(self, id_str):
         self.tweets.pop(id_str)
 
+    def del_dm(self, id_str):
+        self.dms.pop(id_str)
+
     def del_user(self, id_str):
         self.users.pop(id_str)
 
@@ -286,6 +322,14 @@ class FakeTwitterData(object):
             self.next_tweet_id, text, user_id_str, *args, **kw)
         self._next_tweet_id += 10
         return tweet
+
+    def new_dm(self, text, sender_id_str, recipient_id_str, *args, **kw):
+        dm = self.add_dm(
+            self.next_dm_id,text, sender_id_str, recipient_id_str,
+            *args, **kw)
+
+        self._next_dm_id += 10
+        return dm
 
     def new_user(self, screen_name, name, *args, **kw):
         user = self.add_user(self.next_user_id, screen_name, name, *args, **kw)
@@ -529,16 +573,6 @@ class FakeTwitterAPI(object):
 
     # Streaming
 
-    def _make_tweet_stream(self, predicate):
-        resp = FakeResponse(None)
-
-        def finished_callback(r):
-            self._twitter_data.remove_tweet_stream(resp)
-
-        self._twitter_data.add_tweet_stream(resp, predicate)
-        resp.finished_callback = finished_callback
-        return resp
-
     @fake_api('statuses/filter.json', 'stream')
     def stream_filter(self, follow=None, track=None, locations=None,
                       stall_warnings=None):
@@ -556,7 +590,9 @@ class FakeTwitterAPI(object):
                     return True
             return False
 
-        return self._make_tweet_stream(stream_filter_predicate)
+        stream = self._twitter_data.add_stream()
+        stream.add_message_type('tweet', stream_filter_predicate)
+        return stream.resp
 
     # TODO: Implement stream_sample()
     # TODO: Implement stream_firehose()
@@ -572,7 +608,7 @@ class FakeTwitterAPI(object):
         if with_ != 'user':
             raise NotImplementedError("with != followings")
 
-        def userstream_predicate(tweet):
+        def userstream_tweet_predicate(tweet):
             if tweet.user_id_str == self._user_id_str:
                 return True
             if mention_re.search(tweet.text):
@@ -581,10 +617,13 @@ class FakeTwitterAPI(object):
                 pass
             return False
 
-        resp = self._make_tweet_stream(userstream_predicate)
+        stream = self._twitter_data.add_stream()
+        stream.add_message_type('tweet', userstream_tweet_predicate)
+
         # TODO: Proper friends.
-        resp.deliver_data(json.dumps({'friends_str': []}) + '\r\n')
-        return resp
+        stream.deliver({'friends_str': []})
+
+        return stream.resp
 
     # Direct Messages
 

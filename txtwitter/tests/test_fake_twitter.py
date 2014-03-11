@@ -368,7 +368,7 @@ class TestFakeTwitterAPI(TestCase):
         self.assertEqual(messages, twitter.to_dicts(tweet1, tweet2))
 
         resp.finished()
-        self.assertEqual(twitter.tweet_streams, {})
+        self.assertEqual(twitter.streams, {})
 
     # TODO: More tests for fake stream_filter()
 
@@ -380,7 +380,7 @@ class TestFakeTwitterAPI(TestCase):
         uri = self._build_uri(TWITTER_USERSTREAM_URL, 'user.json')
         self.assert_method_uri('userstream_user', uri)
 
-    def test_userstream_user_with_user(self):
+    def test_userstream_user_with_user_friends(self):
         twitter = self._FakeTwitterData()
         twitter.add_user('1', 'fakeuser', 'Fake User')
         twitter.add_user('2', 'fakeuser2', 'Fake User')
@@ -390,18 +390,45 @@ class TestFakeTwitterAPI(TestCase):
         resp = api.userstream_user(stringify_friend_ids='true', with_='user')
         self._process_stream_response(resp, messages.append)
         self.assertEqual(messages, [{'friends_str': []}])
+
+        resp.finished()
+        self.assertEqual(twitter.streams, {})
+
+    def test_userstream_user_with_user_tweets(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        messages = []
+        resp = api.userstream_user(stringify_friend_ids='true', with_='user')
+        self._process_stream_response(resp, messages.append)
         messages.pop(0)
 
         tweet1 = twitter.new_tweet('hello', '1')
         twitter.new_tweet('hello', '2')
         self.assertEqual(messages, twitter.to_dicts(tweet1))
 
+        resp.finished()
+        self.assertEqual(twitter.streams, {})
+
+    def test_userstream_user_with_user_mentions(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        messages = []
+        resp = api.userstream_user(stringify_friend_ids='true', with_='user')
+        self._process_stream_response(resp, messages.append)
+        messages.pop(0)
+
         twitter.new_tweet('@fakeuser2', '2')
         tweet2 = twitter.new_tweet('@fakeuser', '2')
-        self.assertEqual(messages, twitter.to_dicts(tweet1, tweet2))
+        self.assertEqual(messages, twitter.to_dicts(tweet2))
 
         resp.finished()
-        self.assertEqual(twitter.tweet_streams, {})
+        self.assertEqual(twitter.streams, {})
 
         # TODO: Replies
 
