@@ -545,6 +545,19 @@ class TestFakeTwitterAPI(TestCase):
             api.direct_messages(count=2),
             twitter.to_dicts(dm3, dm2))
 
+    def test_direct_messages_include_entities(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        twitter.new_dm('hello', '2', '1')
+        dm2 = twitter.new_dm('goodbye', '2', '1')
+        dm3 = twitter.new_dm('hello again', '2', '1')
+
+        dms = api.direct_messages(include_entities=False)
+        self.assertTrue(all('entities' not in dm for dm in dms))
 
     # TODO: Tests for fake direct_messages_sent()
     # TODO: Tests for fake direct_messages_show()

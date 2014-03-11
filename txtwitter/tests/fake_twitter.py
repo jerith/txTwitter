@@ -653,6 +653,14 @@ class FakeTwitterAPI(object):
         dms = self._twitter_data.dms.values()
         dms = [dm for dm in dms if dm.recipient_id_str == self._user_id_str]
         dms = self._clamp_dms(dms, since_id, max_id, count)
+        return self._twitter_data.to_dicts(
+            *dms, include_entities=include_entities, skip_status=skip_status)
+
+    def direct_messages_sent(self, since_id=None, max_id=None, count=None,
+                             include_entities=None, skip_status=None):
+        dms = self._twitter_data.dms.values()
+        dms = [dm for dm in dms if dm.sender_id_str == self._user_id_str]
+        dms = self._clamp_dms(dms, since_id, max_id, count)
         return self._twitter_data.to_dicts(*dms)
 
     # TODO: Implement direct_messages_sent()
