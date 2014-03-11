@@ -646,6 +646,7 @@ class FakeTwitterAPI(object):
 
         dms = sorted(dms, reverse=True)
         count = 200 if count is None else min(count, 200)
+
         return dms[:count]
 
     def direct_messages(self, since_id=None, max_id=None, count=None,
@@ -653,15 +654,24 @@ class FakeTwitterAPI(object):
         dms = self._twitter_data.dms.values()
         dms = [dm for dm in dms if dm.recipient_id_str == self._user_id_str]
         dms = self._clamp_dms(dms, since_id, max_id, count)
+
         return self._twitter_data.to_dicts(
             *dms, include_entities=include_entities, skip_status=skip_status)
 
     def direct_messages_sent(self, since_id=None, max_id=None, count=None,
-                             include_entities=None, skip_status=None):
+                             include_entities=None, page=None):
         dms = self._twitter_data.dms.values()
         dms = [dm for dm in dms if dm.sender_id_str == self._user_id_str]
         dms = self._clamp_dms(dms, since_id, max_id, count)
-        return self._twitter_data.to_dicts(*dms)
+
+        if page is None:
+            page = 1
+
+        page_end = page * 20
+        dms = dms[page_end - 20:page_end]
+
+        return self._twitter_data.to_dicts(
+            *dms, include_entities=include_entities)
 
     # TODO: Implement direct_messages_sent()
     # TODO: Implement direct_messages_show()
