@@ -697,8 +697,8 @@ class TestFakeTwitterAPI(TestCase):
         twitter.add_user('2', 'fakeuser2', 'Fake User')
         dm = twitter.new_dm('hello', '1', '2')
 
-        found_dms = api.direct_messages_destroy(dm.id_str)
-        self.assertEqual(twitter.to_dicts(dm), found_dms)
+        found_dm = api.direct_messages_destroy(dm.id_str)
+        self.assertEqual(dm.to_dict(twitter), found_dm)
         self.assertTrue(dm.id_str not in twitter.dms)
 
     def test_direct_messages_destroy_not_found(self):
@@ -726,7 +726,7 @@ class TestFakeTwitterAPI(TestCase):
         twitter.add_user('2', 'fakeuser2', 'Fake User')
         dm = twitter.new_dm('hello', '1', '2')
 
-        [found_dm] = api.direct_messages_destroy(
+        found_dm = api.direct_messages_destroy(
             dm.id_str, include_entities=False)
         self.assertTrue('entities' not in found_dm)
 

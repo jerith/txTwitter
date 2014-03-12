@@ -718,8 +718,8 @@ class FakeTwitterAPI(object):
                 }]}))
 
         del self._twitter_data.dms[dm.id_str]
-        return self._twitter_data.to_dicts(
-            dm, include_entities=include_entities)
+        return dm.to_dict(
+            self._twitter_data, include_entities=include_entities)
 
     @fake_api('direct_messages/new.json')
     def direct_messages_new(self, text, user_id=None, screen_name=None):
