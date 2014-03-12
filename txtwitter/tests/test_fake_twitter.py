@@ -714,6 +714,33 @@ class TestFakeTwitterAPI(TestCase):
             dm.id_str, include_entities=False)
         self.assertTrue('entities' not in found_dm)
 
+    def test_direct_messages_new_by_user_id(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        sent_dm = api.direct_messages_new('hello', user_id=2)
+        actual_dm = twitter.get_dm(sent_dm['id_str'])
+        self.assertEqual(sent_dm, actual_dm.to_dict(twitter))
+
+    def test_direct_messages_new_by_screen_name(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        sent_dm = api.direct_messages_new('hello', screen_name='fakeuser2')
+        actual_dm = twitter.get_dm(sent_dm['id_str'])
+        self.assertEqual(sent_dm, actual_dm.to_dict(twitter))
+
+    def test_direct_messages_new_no_user_id_or_screen_name(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+        self.assertRaises(TwitterAPIError, api.direct_messages_new, 'hello')
+
     # TODO: Tests for fake direct_messages_show()
     # TODO: Tests for fake direct_messages_destroy()
     # TODO: Tests for fake direct_messages_new()

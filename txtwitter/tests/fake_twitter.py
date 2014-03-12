@@ -292,6 +292,9 @@ class FakeTwitterData(object):
     def get_tweet(self, id_str):
         return self.tweets.get(id_str)
 
+    def get_dm(self, id_str):
+        return self.dms.get(id_str)
+
     def get_user(self, id_str):
         return self.users.get(id_str)
 
@@ -710,6 +713,26 @@ class FakeTwitterAPI(object):
         del self._twitter_data.dms[dm.id_str]
         return self._twitter_data.to_dicts(
             dm, include_entities=include_entities)
+
+    @fake_api('direct_messages/new.json')
+    def direct_messages_new(self, text, user_id=None, screen_name=None):
+        if user_id is None and screen_name is None:
+            raise TwitterAPIError(400, "Bad Request", json.dumps({
+                "errors": [{
+                    "message": (
+                        "Recipient (user, screen name, or id) "
+                        "parameter is missing."),
+                    "code": 38
+                }]}))
+
+        if user_id is None:
+            user = self._twitter_data.get_user_by_screen_name(screen_name)
+            user_id = user.id_str
+        else:
+            user_id = str(user_id)
+
+        dm = self._twitter_data.new_dm(text, self._user_id_str, user_id)
+        return dm.to_dict(self._twitter_data)
 
     # TODO: Implement direct_messages_sent()
     # TODO: Implement direct_messages_show()
