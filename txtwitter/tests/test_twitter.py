@@ -731,13 +731,13 @@ class TestTwitterClient(TestCase):
             # Truncated dm data.
             "id": 1,
             "id_str": "1",
-            "text": "woo",
+            "text": "hello",
             "sender_id": 1,
             "sender_id_str": "1",
-            "sender_screen_name": "fakeuser2",
+            "sender_screen_name": "fakeuser",
             "recipient_id": 2,
             "recipient_id_str": "2",
-            "recipient_screen_name": "fakeuser",
+            "recipient_screen_name": "fakeuser2",
         }]
 
         agent.add_expected_request(
@@ -763,13 +763,13 @@ class TestTwitterClient(TestCase):
             # Truncated dm data.
             "id": 1,
             "id_str": "1",
-            "text": "woo",
+            "text": "hello",
             "sender_id": 1,
             "sender_id_str": "1",
-            "sender_screen_name": "fakeuser2",
+            "sender_screen_name": "fakeuser",
             "recipient_id": 2,
             "recipient_id_str": "2",
-            "recipient_screen_name": "fakeuser",
+            "recipient_screen_name": "fakeuser2",
         }]
 
         agent.add_expected_request(
@@ -789,13 +789,13 @@ class TestTwitterClient(TestCase):
             # Truncated dm data.
             "id": 1,
             "id_str": "1",
-            "text": "woo",
+            "text": "hello",
             "sender_id": 1,
             "sender_id_str": "1",
-            "sender_screen_name": "fakeuser2",
+            "sender_screen_name": "fakeuser",
             "recipient_id": 2,
             "recipient_id_str": "2",
-            "recipient_screen_name": "fakeuser",
+            "recipient_screen_name": "fakeuser2",
         }]
 
         agent.add_expected_request(
@@ -821,13 +821,13 @@ class TestTwitterClient(TestCase):
             # Truncated dm data.
             "id": 1,
             "id_str": "1",
-            "text": "woo",
+            "text": "hello",
             "sender_id": 1,
             "sender_id_str": "1",
-            "sender_screen_name": "fakeuser2",
+            "sender_screen_name": "fakeuser",
             "recipient_id": 2,
             "recipient_id_str": "2",
-            "recipient_screen_name": "fakeuser",
+            "recipient_screen_name": "fakeuser2",
         }]
 
         agent.add_expected_request(
@@ -847,13 +847,13 @@ class TestTwitterClient(TestCase):
             # Truncated dm data.
             "id": 1,
             "id_str": "1",
-            "text": "woo",
+            "text": "hello",
             "sender_id": 1,
             "sender_id_str": "1",
-            "sender_screen_name": "fakeuser2",
+            "sender_screen_name": "fakeuser",
             "recipient_id": 2,
             "recipient_id_str": "2",
-            "recipient_screen_name": "fakeuser",
+            "recipient_screen_name": "fakeuser2",
         }]
 
         agent.add_expected_request(
@@ -871,13 +871,13 @@ class TestTwitterClient(TestCase):
             # Truncated dm data.
             "id": 1,
             "id_str": "1",
-            "text": "woo",
+            "text": "hello",
             "sender_id": 1,
             "sender_id_str": "1",
-            "sender_screen_name": "fakeuser2",
+            "sender_screen_name": "fakeuser",
             "recipient_id": 2,
             "recipient_id_str": "2",
-            "recipient_screen_name": "fakeuser",
+            "recipient_screen_name": "fakeuser2",
         }
 
         agent.add_expected_request(
@@ -899,13 +899,13 @@ class TestTwitterClient(TestCase):
             # Truncated dm data.
             "id": 1,
             "id_str": "1",
-            "text": "woo",
+            "text": "hello",
             "sender_id": 1,
             "sender_id_str": "1",
-            "sender_screen_name": "fakeuser2",
+            "sender_screen_name": "fakeuser",
             "recipient_id": 2,
             "recipient_id_str": "2",
-            "recipient_screen_name": "fakeuser",
+            "recipient_screen_name": "fakeuser2",
         }
 
         agent.add_expected_request(
@@ -913,6 +913,65 @@ class TestTwitterClient(TestCase):
 
         resp = yield client.direct_messages_destroy(
             '1', include_entities=False)
+        self.assertEqual(resp, response_data)
+
+    @inlineCallbacks
+    def test_direct_messages_new_by_user_id(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/new.json'
+
+        expected_params = {
+            'text': 'hello',
+            'user_id': '2'
+        }
+
+        response_data = {
+            # Truncated dm data.
+            "id": 1,
+            "id_str": "1",
+            "text": "hello",
+            "sender_id": 1,
+            "sender_id_str": "1",
+            "sender_screen_name": "fakeuser",
+            "recipient_id": 2,
+            "recipient_id_str": "2",
+            "recipient_screen_name": "fakeuser2",
+        }
+
+        agent.add_expected_request(
+            'POST', uri, expected_params, self._resp_json(response_data))
+
+        resp = yield client.direct_messages_new('hello', user_id='2')
+        self.assertEqual(resp, response_data)
+
+    @inlineCallbacks
+    def test_direct_messages_new_by_screen_name(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/new.json'
+
+        expected_params = {
+            'text': 'hello',
+            'screen_name': 'fakeuser2'
+        }
+
+        response_data = {
+            # Truncated dm data.
+            "id": 1,
+            "id_str": "1",
+            "text": "hello",
+            "sender_id": 1,
+            "sender_id_str": "1",
+            "sender_screen_name": "fakeuser",
+            "recipient_id": 2,
+            "recipient_id_str": "2",
+            "recipient_screen_name": "fakeuser2",
+        }
+
+        agent.add_expected_request(
+            'POST', uri, expected_params, self._resp_json(response_data))
+
+        resp = yield client.direct_messages_new(
+            'hello', screen_name='fakeuser2')
         self.assertEqual(resp, response_data)
 
     # TODO: Tests for direct_messages()

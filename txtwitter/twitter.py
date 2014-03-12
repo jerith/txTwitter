@@ -782,7 +782,7 @@ class TwitterClient(object):
         """
         Destroys the direct message with the given id.
 
-        https://dev.twitter.com/docs/api/1.1/get/direct_messages/destroy
+        https://dev.twitter.com/docs/api/1.1/post/direct_messages/destroy
 
         :param str id:
             (*required*) The ID of the direct message.
@@ -796,6 +796,31 @@ class TwitterClient(object):
         set_str_param(params, 'id', id)
         set_bool_param(params, 'include_entities', include_entities)
         return self._post_api('direct_messages/destroy.json', params)
+
+    def direct_messages_new(self, text, user_id=None, screen_name=None):
+        """
+        Sends a new direct message to the given user from the authenticating
+        user.
+
+        https://dev.twitter.com/docs/api/1.1/post/direct_messages/new
+
+        :param str text:
+            (*required*) The text of your direct message.
+        :param str user_id:
+            The ID of the user who should receive the direct message. Required
+            if ``screen_name`` isn't given.
+        :param str screen_name:
+            The screen name of the user who should receive the direct message.
+            Required if ``user_id`` isn't given.
+
+        :returns:
+            A direct message dict containing the sent direct message.
+        """
+        params = {}
+        set_str_param(params, 'text', text)
+        set_str_param(params, 'user_id', user_id)
+        set_str_param(params, 'screen_name', screen_name)
+        return self._post_api('direct_messages/new.json', params)
 
     # TODO: Implement direct_messages_show()
     # TODO: Implement direct_messages_destroy()
