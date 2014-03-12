@@ -776,6 +776,25 @@ class TwitterClient(object):
         d.addCallback(lambda dms: dms[0])
         return d
 
+    def direct_messages_destroy(self, id, include_entities=None):
+        """
+        Destroys the direct message with the given id.
+
+        https://dev.twitter.com/docs/api/1.1/get/direct_messages/destroy
+
+        :param str id:
+            The ID of the direct message.
+        :param bool include_entities:
+            The entities node will not be included when set to ``False``.
+
+        :returns:
+            A direct message dict containing the destroyed direct message.
+        """
+        params = {}
+        set_str_param(params, 'id', id)
+        set_bool_param(params, 'include_entities', include_entities)
+        return self._post_api('direct_messages/destroy.json', params)
+
     # TODO: Implement direct_messages_show()
     # TODO: Implement direct_messages_destroy()
     # TODO: Implement direct_messages_new()

@@ -862,6 +862,59 @@ class TestTwitterClient(TestCase):
         resp = yield client.direct_messages_show('1')
         self.assertEqual(resp, response_data[0])
 
+    @inlineCallbacks
+    def test_direct_messages_destroy(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/destroy.json'
+
+        response_data = {
+            # Truncated dm data.
+            "id": 1,
+            "id_str": "1",
+            "text": "woo",
+            "sender_id": 1,
+            "sender_id_str": "1",
+            "sender_screen_name": "fakeuser2",
+            "recipient_id": 2,
+            "recipient_id_str": "2",
+            "recipient_screen_name": "fakeuser",
+        }
+
+        agent.add_expected_request(
+            'POST', uri, {'id': '1'}, self._resp_json(response_data))
+
+        resp = yield client.direct_messages_destroy('1')
+        self.assertEqual(resp, response_data)
+
+    def test_direct_messages_destroy_all_params(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/destroy.json'
+
+        expected_params = {
+            'id': '1',
+            'include_entities': 'false'
+        }
+
+        response_data = {
+            # Truncated dm data.
+            "id": 1,
+            "id_str": "1",
+            "text": "woo",
+            "sender_id": 1,
+            "sender_id_str": "1",
+            "sender_screen_name": "fakeuser2",
+            "recipient_id": 2,
+            "recipient_id_str": "2",
+            "recipient_screen_name": "fakeuser",
+        }
+
+        agent.add_expected_request(
+            'POST', uri, expected_params, self._resp_json(response_data))
+
+        resp = yield client.direct_messages_destroy(
+            '1', include_entities=False)
+        self.assertEqual(resp, response_data)
+
     # TODO: Tests for direct_messages()
     # TODO: Tests for direct_messages_sent()
     # TODO: Tests for direct_messages_show()
