@@ -502,6 +502,18 @@ class TestFakeTwitterAPI(TestCase):
 
         self.assertEqual(api.direct_messages(), twitter.to_dicts(dm2, dm1))
 
+    def test_direct_messages_limiting(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        dms = [twitter.new_dm('hello', '2', '1') for i in range(21)]
+
+        self.assertEqual(
+            api.direct_messages(),
+            twitter.to_dicts(*dms[::-1][:20]))
+
     def test_direct_messages_since_id(self):
         twitter = self._FakeTwitterData()
         api = self._FakeTwitterAPI(twitter, '1')
