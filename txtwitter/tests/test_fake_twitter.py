@@ -126,7 +126,8 @@ class TestFakeDM(TestCase):
                 'screen_name': 'fakeuser'
             },
             'sender_id': 1,
-            'sender_id_str': '1'
+            'sender_id_str': '1',
+            'sender_screen_name': 'fakeuser'
         })
 
     def test__get_recipient_details(self):
@@ -144,7 +145,8 @@ class TestFakeDM(TestCase):
                 'screen_name': 'fakeuser2'
             },
             'recipient_id': 2,
-            'recipient_id_str': '2'
+            'recipient_id_str': '2',
+            'recipient_screen_name': 'fakeuser2'
         })
 
     def test_to_dict(self):
@@ -167,6 +169,7 @@ class TestFakeDM(TestCase):
             },
             'sender_id': 1,
             'sender_id_str': '1',
+            'sender_screen_name': 'fakeuser',
             'recipient': {
                 'created_at': '2014-03-11 10:48:22.687699',
                 'id': 2,
@@ -176,6 +179,7 @@ class TestFakeDM(TestCase):
             },
             'recipient_id': 2,
             'recipient_id_str': '2',
+            'recipient_screen_name': 'fakeuser2',
             'entities': {
                 'user_mentions': [{
                     'id': 2,

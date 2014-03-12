@@ -180,7 +180,8 @@ class FakeDM(object):
         return {
             'sender': sender.to_dict(twitter_data),
             'sender_id': int(self.sender_id_str),
-            'sender_id_str': self.sender_id_str
+            'sender_id_str': self.sender_id_str,
+            'sender_screen_name': sender.screen_name
         }
 
     def _get_recipient_details(self, twitter_data):
@@ -188,7 +189,8 @@ class FakeDM(object):
         return {
             'recipient': recipient.to_dict(twitter_data),
             'recipient_id': int(self.recipient_id_str),
-            'recipient_id_str': self.recipient_id_str
+            'recipient_id_str': self.recipient_id_str,
+            'recipient_screen_name': recipient.screen_name
         }
 
     def to_dict(self, twitter_data, skip_status=None,
