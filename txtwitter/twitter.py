@@ -758,6 +758,24 @@ class TwitterClient(object):
         set_bool_param(params, 'include_entities', include_entities)
         return self._get_api('direct_messages/sent.json', params)
 
+    def direct_messages_show(self, id):
+        """
+        Gets the direct message with the given id.
+
+        https://dev.twitter.com/docs/api/1.1/get/direct_messages/show
+
+        :param str id:
+            The ID of the direct message.
+
+        :returns:
+            A direct message dict.
+        """
+        params = {}
+        set_str_param(params, 'id', id)
+        d = self._get_api('direct_messages/show.json', params)
+        d.addCallback(lambda dms: dms[0])
+        return d
+
     # TODO: Implement direct_messages_show()
     # TODO: Implement direct_messages_destroy()
     # TODO: Implement direct_messages_new()
