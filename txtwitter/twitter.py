@@ -677,7 +677,48 @@ class TwitterClient(object):
 
     # Direct Messages
 
-    # TODO: Implement direct_messages()
+    def direct_messages(self, since_id=None, max_id=None, count=None,
+                        include_entities=None, skip_status=None):
+        """
+        Gets the 20 most recent direct messages received by the user.
+
+        https://dev.twitter.com/docs/api/1.1/get/direct_messages
+
+        :param str since_id:
+            Returns results with an ID greater than (that is, more recent than)
+            the specified ID. There are limits to the number of Tweets which
+            can be accessed through the API. If the limit of Tweets has occured
+            since the since_id, the since_id will be forced to the oldest ID
+            available.
+
+        :params str max_id:
+            Returns results with an ID less than (that is, older than) or equal
+            to the specified ID.
+
+        :param int count:
+            Specifies the number of direct messages to try and retrieve, up to
+            a maximum of ``200``. The value of count is best thought of as a
+            limit to the number of Tweets to return because suspended or
+            deleted content is removed after the count has been applied.
+
+        :param bool include_entities:
+            The entities node will not be included when set to ``False``.
+
+        :param bool skip_status:
+            When set to ``True``, statuses will not be included in the returned
+            user objects.
+
+        :returns:
+            A list of direct message dicts.
+        """
+        params = {}
+        set_int_param(params, 'since_id', since_id)
+        set_int_param(params, 'max_id', max_id)
+        set_int_param(params, 'count', count)
+        set_bool_param(params, 'include_entities', include_entities)
+        set_bool_param(params, 'skip_status', skip_status)
+        return self._get_api('direct_messages.json', params)
+
     # TODO: Implement direct_messages_sent()
     # TODO: Implement direct_messages_show()
     # TODO: Implement direct_messages_destroy()
