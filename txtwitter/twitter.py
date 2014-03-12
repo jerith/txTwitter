@@ -719,6 +719,45 @@ class TwitterClient(object):
         set_bool_param(params, 'skip_status', skip_status)
         return self._get_api('direct_messages.json', params)
 
+    def direct_messages_sent(self, since_id=None, max_id=None, count=None,
+                             include_entities=None, page=None):
+        """
+        Gets the 20 most recent direct messages sent by the user.
+
+        https://dev.twitter.com/docs/api/1.1/get/direct_messages/sent
+
+        :param str since_id:
+            Returns results with an ID greater than (that is, more recent than)
+            the specified ID. There are limits to the number of Tweets which
+            can be accessed through the API. If the limit of Tweets has occured
+            since the since_id, the since_id will be forced to the oldest ID
+            available.
+
+        :params str max_id:
+            Returns results with an ID less than (that is, older than) or equal
+            to the specified ID.
+
+        :param int count:
+            Returns results with an ID less than (that is, older than) or equal
+            to the specified ID.
+
+        :param int page:
+            Specifies the page of results to retrieve.
+
+        :param bool include_entities:
+            The entities node will not be included when set to ``False``.
+
+        :returns:
+            A list of direct message dicts.
+        """
+        params = {}
+        set_int_param(params, 'since_id', since_id)
+        set_int_param(params, 'max_id', max_id)
+        set_int_param(params, 'count', count)
+        set_int_param(params, 'page', page)
+        set_bool_param(params, 'include_entities', include_entities)
+        return self._get_api('direct_messages/sent.json', params)
+
     # TODO: Implement direct_messages_sent()
     # TODO: Implement direct_messages_show()
     # TODO: Implement direct_messages_destroy()
