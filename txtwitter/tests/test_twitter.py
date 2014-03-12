@@ -735,8 +735,8 @@ class TestTwitterClient(TestCase):
             "sender_id": 1,
             "sender_id_str": "1",
             "sender_screen_name": "fakeuser2",
-            "recipient_id": 2279101362,
-            "recipient_id_str": "2279101362",
+            "recipient_id": 2,
+            "recipient_id_str": "2",
             "recipient_screen_name": "fakeuser",
         }]
 
@@ -767,8 +767,8 @@ class TestTwitterClient(TestCase):
             "sender_id": 1,
             "sender_id_str": "1",
             "sender_screen_name": "fakeuser2",
-            "recipient_id": 2279101362,
-            "recipient_id_str": "2279101362",
+            "recipient_id": 2,
+            "recipient_id_str": "2",
             "recipient_screen_name": "fakeuser",
         }]
 
@@ -793,8 +793,8 @@ class TestTwitterClient(TestCase):
             "sender_id": 1,
             "sender_id_str": "1",
             "sender_screen_name": "fakeuser2",
-            "recipient_id": 2279101362,
-            "recipient_id_str": "2279101362",
+            "recipient_id": 2,
+            "recipient_id_str": "2",
             "recipient_screen_name": "fakeuser",
         }]
 
@@ -825,8 +825,8 @@ class TestTwitterClient(TestCase):
             "sender_id": 1,
             "sender_id_str": "1",
             "sender_screen_name": "fakeuser2",
-            "recipient_id": 2279101362,
-            "recipient_id_str": "2279101362",
+            "recipient_id": 2,
+            "recipient_id_str": "2",
             "recipient_screen_name": "fakeuser",
         }]
 

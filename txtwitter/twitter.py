@@ -712,8 +712,8 @@ class TwitterClient(object):
             A list of direct message dicts.
         """
         params = {}
-        set_int_param(params, 'since_id', since_id)
-        set_int_param(params, 'max_id', max_id)
+        set_str_param(params, 'since_id', since_id)
+        set_str_param(params, 'max_id', max_id)
         set_int_param(params, 'count', count)
         set_bool_param(params, 'include_entities', include_entities)
         set_bool_param(params, 'skip_status', skip_status)
@@ -751,14 +751,13 @@ class TwitterClient(object):
             A list of direct message dicts.
         """
         params = {}
-        set_int_param(params, 'since_id', since_id)
-        set_int_param(params, 'max_id', max_id)
+        set_str_param(params, 'since_id', since_id)
+        set_str_param(params, 'max_id', max_id)
         set_int_param(params, 'count', count)
         set_int_param(params, 'page', page)
         set_bool_param(params, 'include_entities', include_entities)
         return self._get_api('direct_messages/sent.json', params)
 
-    # TODO: Implement direct_messages_sent()
     # TODO: Implement direct_messages_show()
     # TODO: Implement direct_messages_destroy()
     # TODO: Implement direct_messages_new()
