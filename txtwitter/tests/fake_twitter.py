@@ -649,6 +649,7 @@ class FakeTwitterAPI(object):
 
         return dms[:count]
 
+    @fake_api('direct_messages.json')
     def direct_messages(self, since_id=None, max_id=None, count=None,
                         include_entities=None, skip_status=None):
         dms = self._twitter_data.dms.values()
@@ -658,6 +659,7 @@ class FakeTwitterAPI(object):
         return self._twitter_data.to_dicts(
             *dms, include_entities=include_entities, skip_status=skip_status)
 
+    @fake_api('direct_messages/sent.json')
     def direct_messages_sent(self, since_id=None, max_id=None, count=None,
                              include_entities=None, page=None):
         dms = self._twitter_data.dms.values()
@@ -673,6 +675,7 @@ class FakeTwitterAPI(object):
         return self._twitter_data.to_dicts(
             *dms, include_entities=include_entities)
 
+    @fake_api('direct_messages/show.json')
     def direct_messages_show(self, id):
         dm = self._twitter_data.dms.get(str(id))
 
