@@ -643,8 +643,10 @@ class FakeTwitterAPI(object):
     # Direct Messages
     def _clamp_dms(self, dms, since_id=None, max_id=None, count=None):
         if since_id is not None:
+            since_id = int(since_id)
             dms = [dm for dm in dms if int(dm.id_str) > since_id]
         if max_id is not None:
+            max_id = int(max_id)
             dms = [dm for dm in dms if int(dm.id_str) <= max_id]
 
         dms = sorted(dms, reverse=True)
@@ -682,7 +684,7 @@ class FakeTwitterAPI(object):
 
     @fake_api('direct_messages/show.json')
     def direct_messages_show(self, id):
-        dm = self._twitter_data.dms.get(str(id))
+        dm = self._twitter_data.dms.get(id)
 
         if dm is None:
             self._404()
@@ -699,7 +701,7 @@ class FakeTwitterAPI(object):
 
     @fake_api('direct_messages/destroy.json')
     def direct_messages_destroy(self, id, include_entities=None):
-        dm = self._twitter_data.dms.get(str(id))
+        dm = self._twitter_data.dms.get(id)
 
         if dm is None:
             self._404()
@@ -730,8 +732,6 @@ class FakeTwitterAPI(object):
         if user_id is None:
             user = self._twitter_data.get_user_by_screen_name(screen_name)
             user_id = user.id_str
-        else:
-            user_id = str(user_id)
 
         dm = self._twitter_data.new_dm(text, self._user_id_str, user_id)
         return dm.to_dict(self._twitter_data)
