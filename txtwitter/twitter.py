@@ -765,7 +765,7 @@ class TwitterClient(object):
         https://dev.twitter.com/docs/api/1.1/get/direct_messages/show
 
         :param str id:
-            The ID of the direct message.
+            (*required*) The ID of the direct message.
 
         :returns:
             A direct message dict.
@@ -783,7 +783,7 @@ class TwitterClient(object):
         https://dev.twitter.com/docs/api/1.1/get/direct_messages/destroy
 
         :param str id:
-            The ID of the direct message.
+            (*required*) The ID of the direct message.
         :param bool include_entities:
             The entities node will not be included when set to ``False``.
 
