@@ -680,7 +680,8 @@ class TwitterClient(object):
     def direct_messages(self, since_id=None, max_id=None, count=None,
                         include_entities=None, skip_status=None):
         """
-        Gets the 20 most recent direct messages received by the user.
+        Gets the 20 most recent direct messages received by the authenticating
+        user.
 
         https://dev.twitter.com/docs/api/1.1/get/direct_messages
 
@@ -722,7 +723,8 @@ class TwitterClient(object):
     def direct_messages_sent(self, since_id=None, max_id=None, count=None,
                              include_entities=None, page=None):
         """
-        Gets the 20 most recent direct messages sent by the user.
+        Gets the 20 most recent direct messages sent by the authenticating
+        user.
 
         https://dev.twitter.com/docs/api/1.1/get/direct_messages/sent
 
