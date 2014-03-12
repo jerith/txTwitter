@@ -673,6 +673,22 @@ class FakeTwitterAPI(object):
         return self._twitter_data.to_dicts(
             *dms, include_entities=include_entities)
 
+    def direct_messages_show(self, id):
+        dm = self._twitter_data.dms.get(str(id))
+
+        if dm is None:
+            self._404()
+
+        if (dm.recipient_id_str != self._user_id_str and
+            dm.sender_id_str != self._user_id_str):
+            raise TwitterAPIError(403, "Forbidden", json.dumps({
+                "errors": [{
+                    "message": "There was an error sending your message: .",
+                    "code": 151
+                }]}))
+
+        return self._twitter_data.to_dicts(dm)
+
     # TODO: Implement direct_messages_sent()
     # TODO: Implement direct_messages_show()
     # TODO: Implement direct_messages_destroy()

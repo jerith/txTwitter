@@ -5,6 +5,7 @@ from urllib import urlencode
 from twisted.protocols.basic import LineOnlyReceiver
 from twisted.trial.unittest import TestCase
 
+from txtwitter.error import TwitterAPIError
 from txtwitter.tests import fake_twitter
 
 
@@ -645,7 +646,33 @@ class TestFakeTwitterAPI(TestCase):
             api.direct_messages_sent(page=2),
             twitter.to_dicts(*dms[::-1][20:40]))
 
-    # TODO: Tests for fake direct_messages_sent()
+    def test_direct_messages_show(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        dm = twitter.new_dm('hello', '1', '2')
+
+        found_dm = api.direct_messages_show(dm.id_str)
+        self.assertEqual(twitter.to_dicts(dm), found_dm)
+
+    def test_direct_messages_show_not_found(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+        self.assertRaises(TwitterAPIError, api.direct_messages_show, '1')
+
+    def test_direct_messages_show_forbidden(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        twitter.add_user('3', 'fakeuser3', 'Fake User 3')
+        dm = twitter.new_dm('hello', '2', '3')
+
+        self.assertRaises(TwitterAPIError, api.direct_messages_show, dm.id_str)
+
     # TODO: Tests for fake direct_messages_show()
     # TODO: Tests for fake direct_messages_destroy()
     # TODO: Tests for fake direct_messages_new()
