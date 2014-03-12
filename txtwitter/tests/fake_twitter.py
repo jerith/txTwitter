@@ -734,11 +734,6 @@ class FakeTwitterAPI(object):
         dm = self._twitter_data.new_dm(text, self._user_id_str, user_id)
         return dm.to_dict(self._twitter_data)
 
-    # TODO: Implement direct_messages_sent()
-    # TODO: Implement direct_messages_show()
-    # TODO: Implement direct_messages_destroy()
-    # TODO: Implement direct_messages_new()
-
     # Friends & Followers
 
     # TODO: Implement friendships_no_retweets_ids()

@@ -741,10 +741,6 @@ class TestFakeTwitterAPI(TestCase):
         api = self._FakeTwitterAPI(twitter, '1')
         self.assertRaises(TwitterAPIError, api.direct_messages_new, 'hello')
 
-    # TODO: Tests for fake direct_messages_show()
-    # TODO: Tests for fake direct_messages_destroy()
-    # TODO: Tests for fake direct_messages_new()
-
     # Friends & Followers
 
     # TODO: Tests for fake friendships_no_retweets_ids()
