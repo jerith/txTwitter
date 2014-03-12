@@ -183,10 +183,10 @@ class TestFakeDM(TestCase):
             'entities': {
                 'user_mentions': [{
                     'id': 2,
-                     'id_str': '2',
-                     'indices': [6, 16],
-                     'name': 'Fake User 2',
-                     'screen_name': 'fakeuser2'
+                    'id_str': '2',
+                    'indices': [6, 16],
+                    'name': 'Fake User 2',
+                    'screen_name': 'fakeuser2'
                 }]
             },
         })
@@ -570,7 +570,7 @@ class TestFakeTwitterAPI(TestCase):
         twitter.add_user('2', 'fakeuser2', 'Fake User')
 
         twitter.new_dm('hello', '2', '1')
-        dm2 = twitter.new_dm('goodbye', '2', '1')
+        twitter.new_dm('goodbye', '2', '1')
 
         dms = api.direct_messages(include_entities=False)
         self.assertTrue(all('entities' not in dm for dm in dms))
@@ -644,7 +644,7 @@ class TestFakeTwitterAPI(TestCase):
         twitter.add_user('2', 'fakeuser2', 'Fake User')
 
         twitter.new_dm('hello', '1', '2')
-        dm2 = twitter.new_dm('goodbye', '1', '2')
+        twitter.new_dm('goodbye', '1', '2')
 
         dms = api.direct_messages_sent(include_entities=False)
         self.assertTrue(all('entities' not in dm for dm in dms))

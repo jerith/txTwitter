@@ -15,6 +15,7 @@ from txtwitter.twitter import (
 
 USER_MENTION_RE = re.compile(r'@[a-zA-Z0-9_]+')
 
+
 def now():
     return datetime.utcnow()
 
@@ -334,7 +335,7 @@ class FakeTwitterData(object):
 
     def new_dm(self, text, sender_id_str, recipient_id_str, *args, **kw):
         dm = self.add_dm(
-            self.next_dm_id,text, sender_id_str, recipient_id_str,
+            self.next_dm_id, text, sender_id_str, recipient_id_str,
             *args, **kw)
 
         self._next_dm_id += 10
@@ -692,7 +693,7 @@ class FakeTwitterAPI(object):
             self._404()
 
         if (dm.recipient_id_str != self._user_id_str and
-            dm.sender_id_str != self._user_id_str):
+                dm.sender_id_str != self._user_id_str):
             raise TwitterAPIError(403, "Forbidden", json.dumps({
                 "errors": [{
                     "message": "There was an error sending your message: .",
@@ -709,7 +710,7 @@ class FakeTwitterAPI(object):
             self._404()
 
         if (dm.recipient_id_str != self._user_id_str and
-            dm.sender_id_str != self._user_id_str):
+                dm.sender_id_str != self._user_id_str):
             raise TwitterAPIError(403, "Forbidden", json.dumps({
                 "errors": [{
                     "message": "There was an error sending your message: .",
