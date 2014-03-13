@@ -464,6 +464,71 @@ class TestFakeTwitterAPI(TestCase):
         mentions = api.statuses_user_timeline('2')
         self.assertEqual(mentions, twitter.to_dicts(tweet2, tweet1))
 
+    def test_statuses_user_timeline_limit_by_screen_name(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        twitter.add_tweet('1', 'hello', '1')
+        tweet1 = twitter.add_tweet('2', 'hello', '2')
+        twitter.add_tweet('3', 'hello @fakeuser2', '1')
+        tweet2 = twitter.add_tweet('4', 'hello @fakeuser', '2')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        mentions = api.statuses_user_timeline(screen_name='fakeuser2')
+        self.assertEqual(mentions, twitter.to_dicts(tweet2, tweet1))
+
+    def test_statuses_user_timeline_limit_by_exclude_replies(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        twitter.add_tweet('1', 'hello', '1')
+        tweet1 = twitter.add_tweet('2', 'hello', '2')
+        twitter.add_tweet('3', 'hello @fakeuser2', '1')
+        twitter.add_tweet('4', 'hello @fakeuser', '2', reply_to='3')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        mentions = api.statuses_user_timeline('2', exclude_replies=True)
+        self.assertEqual(mentions, twitter.to_dicts(tweet1))
+
+    def test_statuses_user_timeline_since_id(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+
+        twitter.add_tweet('1', 'hello @fakeuser', '2')
+        tweet2 = twitter.add_tweet('2', 'hello @fakeuser', '2')
+        tweet3 = twitter.add_tweet('3', 'hello @fakeuser', '2')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        mentions = api.statuses_user_timeline('2', since_id='1')
+        self.assertEqual(mentions, twitter.to_dicts(tweet3, tweet2))
+
+    def test_statuses_user_timeline_max_id(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+
+        tweet1 = twitter.add_tweet('1', 'hello @fakeuser', '2')
+        tweet2 = twitter.add_tweet('2', 'hello @fakeuser', '2')
+        twitter.add_tweet('3', 'hello @fakeuser', '2')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        mentions = api.statuses_user_timeline('2', max_id='2')
+        self.assertEqual(mentions, twitter.to_dicts(tweet2, tweet1))
+
+    def test_statuses_user_timeline_limit(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+
+        tweets = [
+            twitter.add_tweet(str(i), 'hello @fakeuser', '2')
+            for i in range(201)]
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        mention_dicts = api.statuses_user_timeline('2', count=201)
+        self.assertEqual(mention_dicts, twitter.to_dicts(*tweets[::-1][:200]))
+
     # TODO: More tests for fake statuses_user_timeline()
 
     # TODO: Tests for fake statuses_home_timeline()

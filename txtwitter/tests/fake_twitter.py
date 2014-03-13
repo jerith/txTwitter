@@ -517,7 +517,7 @@ class FakeTwitterAPI(object):
             self._twitter_data.iter_tweets_from(user_id), count, since_id,
             max_id)
         if exclude_replies:
-            tweets = [tweet for tweet in tweets if tweet.reply_to is not None]
+            tweets = [tweet for tweet in tweets if tweet.reply_to is None]
         if include_rts is not None:
             raise NotImplementedError("exclude_rts param")
         return [
