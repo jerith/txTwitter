@@ -591,8 +591,10 @@ class FakeTwitterAPI(object):
             for term in track.split(','):
                 track_res.append(re.compile(r'\b%s\b' % (re.escape(term),)))
 
+        follow = [] if follow is None else follow.split(',')
+
         def stream_filter_predicate(tweet):
-            for user_id_str in (follow or []):
+            for user_id_str in follow:
                 if tweet.user_id_str == user_id_str:
                     return True
             for track_re in track_res:

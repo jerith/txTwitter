@@ -626,7 +626,27 @@ class TestFakeTwitterAPI(TestCase):
         resp.finished()
         self.assertEqual(twitter.streams, {})
 
-    # TODO: More tests for fake stream_filter()
+    def test_stream_filter_follow(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        twitter.add_user('3', 'fakeuser2', 'Fake User')
+
+        api = self._FakeTwitterAPI(twitter, None)
+        messages = []
+        resp = api.stream_filter(follow='2,3')
+        self._process_stream_response(resp, messages.append)
+        self.assertEqual(messages, [])
+
+        twitter.new_tweet('hello', '1')
+        self.assertEqual(messages, [])
+
+        tweet1 = twitter.new_tweet('hello', '2')
+        tweet2 = twitter.new_tweet('hello', '3')
+        self.assertEqual(messages, twitter.to_dicts(tweet1, tweet2))
+
+        resp.finished()
+        self.assertEqual(twitter.streams, {})
 
     # TODO: Tests for fake stream_sample()
     # TODO: Tests for fake stream_firehose()
