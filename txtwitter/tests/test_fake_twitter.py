@@ -296,6 +296,86 @@ class TestFakeDM(TestCase):
         self.assertTrue('entities' not in dm_dict)
 
 
+class TestFakeTwitterData(TestCase):
+    _FakeTwitterData = from_fake_twitter('FakeTwitterData')
+
+    def test_next_tweet_id(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+
+        id1 = twitter.next_tweet_id
+        tweet1 = twitter.new_tweet('hello', '1')
+
+        self.assertEqual(id1, tweet1.id_str)
+
+    def test_next_dm_id(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser', 'Fake User')
+
+        id1 = twitter.next_tweet_id
+        dm1 = twitter.new_dm('hello', '1', '2')
+
+        self.assertEqual(id1, dm1.id_str)
+
+    def test_next_user_id(self):
+        twitter = self._FakeTwitterData()
+
+        id1 = twitter.next_tweet_id
+        user1 = twitter.new_user('fakeuser', 'Fake User')
+
+        self.assertEqual(id1, user1.id_str)
+
+    def test_del_tweet(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        tweet1 = twitter.add_tweet('1', 'hello', '1')
+
+        self.assertEqual(twitter.get_tweet('1'), tweet1)
+        twitter.del_tweet('1')
+        self.assertEqual(twitter.get_tweet('1'), None)
+
+    def test_del_dm(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+        dm1 = twitter.add_dm('1', 'hello', '1', '2')
+
+        self.assertEqual(twitter.get_dm('1'), dm1)
+        twitter.del_dm('1')
+        self.assertEqual(twitter.get_dm('1'), None)
+
+    def test_user_dm(self):
+        twitter = self._FakeTwitterData()
+        user1 = twitter.add_user('1', 'fakeuser', 'Fake User')
+
+        self.assertEqual(twitter.get_user('1'), user1)
+        twitter.del_user('1')
+        self.assertEqual(twitter.get_user('1'), None)
+
+    def test_new_tweet(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        tweet = twitter.new_tweet('hello', '1')
+        self.assertEqual(tweet.text, 'hello')
+        self.assertEqual(tweet.user_id_str, '1')
+
+    def test_new_dm(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+        dm = twitter.new_dm('hello', '1', '2')
+        self.assertEqual(dm.text, 'hello')
+        self.assertEqual(dm.sender_id_str, '1')
+        self.assertEqual(dm.recipient_id_str, '2')
+
+    def test_new_user(self):
+        twitter = self._FakeTwitterData()
+        user = twitter.new_user('fakeuser', 'Fake User')
+        self.assertEqual(user.screen_name, 'fakeuser')
+        self.assertEqual(user.name, 'Fake User')
+
+
 class TestFakeTwitter(TestCase):
     _FakeTwitter = from_fake_twitter('FakeTwitter')
     _FakeTwitterClient = from_fake_twitter('FakeTwitterClient')
