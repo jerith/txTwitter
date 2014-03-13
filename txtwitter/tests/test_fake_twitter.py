@@ -87,6 +87,11 @@ class TestFakeStream(TestCase):
 class TestFakeTweet(TestCase):
     _FakeTwitterData = from_fake_twitter('FakeTwitterData')
     _FakeTweet = from_fake_twitter('FakeTweet')
+    _now = datetime(2014, 3, 11, 10, 48, 22, 687699)
+
+    def setUp(self):
+        from txtwitter.tests import fake_twitter
+        self.patch(fake_twitter, 'now', lambda: self._now)
 
     def test__get_reply_to_status_details_nonreply(self):
         twitter = self._FakeTwitterData()
@@ -139,6 +144,58 @@ class TestFakeTweet(TestCase):
             'in_reply_to_user_id': 1,
             'in_reply_to_user_id_str': '1'
         })
+
+    def test_to_dict(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+        tweet = twitter.add_tweet('1', 'hello @fakeuser2', '1')
+
+        self.assertEqual(tweet.to_dict(twitter), {
+            'created_at': '2014-03-11 10:48:22.687699',
+            'entities': {
+                'user_mentions': [{
+                    'id': 2,
+                    'id_str': '2',
+                    'indices': [6, 16],
+                    'name': 'Fake User 2',
+                    'screen_name': 'fakeuser2'
+                }]
+            },
+            'favorite_count': 0,
+            'favorited': False,
+            'filter_level': 'medium',
+            'id': 1,
+            'id_str': '1',
+            'retweet_count': 0,
+            'retweeted': False,
+            'source': 'web',
+            'text': 'hello @fakeuser2',
+            'user': {
+                'created_at': '2014-03-11 10:48:22.687699',
+                'id': 1,
+                'id_str': '1',
+                'name': 'Fake User',
+                'screen_name': 'fakeuser'
+            }
+        })
+
+    def test_to_dict_trim_user(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        tweet = twitter.add_tweet('1', 'hello', '1')
+        tweet_dict = tweet.to_dict(twitter, trim_user=True)
+        self.assertEqual(tweet_dict['user'], {
+            'id_str': '1',
+            'id': 1
+        })
+
+    def test_to_dict_not_include_entities(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        tweet = twitter.add_tweet('1', 'hello', '1')
+        tweet_dict = tweet.to_dict(twitter, include_entities=False)
+        self.assertTrue('entities' not in tweet_dict)
 
 
 class TestFakeDM(TestCase):
