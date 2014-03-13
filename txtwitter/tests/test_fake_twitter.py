@@ -5,13 +5,11 @@ from urllib import urlencode
 from twisted.protocols.basic import LineOnlyReceiver
 from twisted.trial.unittest import TestCase
 
-from txtwitter.error import TwitterAPIError
-from txtwitter.tests import fake_twitter
-
 
 def from_fake_twitter(name):
     @property
     def prop(self):
+        from txtwitter.tests import fake_twitter
         return getattr(fake_twitter, name)
     return prop
 
@@ -119,6 +117,7 @@ class TestFakeDM(TestCase):
     _now = datetime(2014, 3, 11, 10, 48, 22, 687699)
 
     def setUp(self):
+        from txtwitter.tests import fake_twitter
         self.patch(fake_twitter, 'now', lambda: self._now)
 
     def test__get_sender_details(self):
@@ -262,6 +261,7 @@ class TestFakeTwitterAPI(TestCase):
     _FakeTwitter = from_fake_twitter('FakeTwitter')
     _FakeTwitterData = from_fake_twitter('FakeTwitterData')
     _FakeTwitterAPI = from_fake_twitter('FakeTwitterAPI')
+    _TwitterAPIError = from_fake_twitter('TwitterAPIError')
 
     def _build_uri(self, base, path, params=None):
         uri = '%s%s' % (base, path)
@@ -686,7 +686,7 @@ class TestFakeTwitterAPI(TestCase):
     def test_direct_messages_show_not_found(self):
         twitter = self._FakeTwitterData()
         api = self._FakeTwitterAPI(twitter, '1')
-        self.assertRaises(TwitterAPIError, api.direct_messages_show, '1')
+        self.assertRaises(self._TwitterAPIError, api.direct_messages_show, '1')
 
     def test_direct_messages_show_forbidden(self):
         twitter = self._FakeTwitterData()
@@ -697,7 +697,8 @@ class TestFakeTwitterAPI(TestCase):
         twitter.add_user('3', 'fakeuser3', 'Fake User 3')
         dm = twitter.new_dm('hello', '2', '3')
 
-        self.assertRaises(TwitterAPIError, api.direct_messages_show, dm.id_str)
+        self.assertRaises(
+            self._TwitterAPIError, api.direct_messages_show, dm.id_str)
 
     def test_direct_messages_destroy(self):
         twitter = self._FakeTwitterData()
@@ -714,7 +715,8 @@ class TestFakeTwitterAPI(TestCase):
     def test_direct_messages_destroy_not_found(self):
         twitter = self._FakeTwitterData()
         api = self._FakeTwitterAPI(twitter, '1')
-        self.assertRaises(TwitterAPIError, api.direct_messages_destroy, '1')
+        self.assertRaises(
+            self._TwitterAPIError, api.direct_messages_destroy, '1')
 
     def test_direct_messages_destroy_forbidden(self):
         twitter = self._FakeTwitterData()
@@ -726,7 +728,7 @@ class TestFakeTwitterAPI(TestCase):
         dm = twitter.new_dm('hello', '2', '3')
 
         self.assertRaises(
-            TwitterAPIError, api.direct_messages_destroy, dm.id_str)
+            self._TwitterAPIError, api.direct_messages_destroy, dm.id_str)
 
     def test_direct_messages_destroy_not_include_entities(self):
         twitter = self._FakeTwitterData()
@@ -765,7 +767,8 @@ class TestFakeTwitterAPI(TestCase):
     def test_direct_messages_new_no_user_id_or_screen_name(self):
         twitter = self._FakeTwitterData()
         api = self._FakeTwitterAPI(twitter, '1')
-        self.assertRaises(TwitterAPIError, api.direct_messages_new, 'hello')
+        self.assertRaises(
+            self._TwitterAPIError, api.direct_messages_new, 'hello')
 
     # Friends & Followers
 
