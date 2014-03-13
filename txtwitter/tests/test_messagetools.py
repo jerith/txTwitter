@@ -255,7 +255,6 @@ class TestTweetFunctions(TestCase):
             "id": 1,
             "id_str": "1",
             'text': 'This is a dm.',
-            "text": "hello",
             "sender_id": 1,
             "sender_id_str": "1",
             "sender_screen_name": "fakeuser",
@@ -282,7 +281,6 @@ class TestTweetFunctions(TestCase):
             "id": 1,
             "id_str": "1",
             'text': 'This is a dm.',
-            "text": "hello",
             "sender_id": 1,
             "sender_id_str": "1",
             "sender_screen_name": "fakeuser",
@@ -308,7 +306,6 @@ class TestTweetFunctions(TestCase):
         msg = {
             "id_str": "1",
             'text': 'This is a dm.',
-            "text": "hello",
             "sender_id": 1,
             "sender_id_str": "1",
             "sender_screen_name": "fakeuser",
@@ -365,7 +362,6 @@ class TestTweetFunctions(TestCase):
         msg = {
             "id_str": "1",
             'text': 'This is a dm mentioning @fakeuser2.',
-            "text": "hello",
             "sender_id": 1,
             "sender_id_str": "1",
             "sender_screen_name": "fakeuser",
@@ -387,7 +383,6 @@ class TestTweetFunctions(TestCase):
         msg = {
             "id_str": "1",
             'text': 'This is a dm.',
-            "text": "hello",
             "sender_id": 1,
             "sender_id_str": "1",
             "sender_screen_name": "fakeuser",
@@ -415,7 +410,6 @@ class TestTweetFunctions(TestCase):
         msg = {
             "id_str": "1",
             'text': 'This is a dm mentioning @fakeuser2.',
-            "text": "hello",
             "sender_id": 1,
             "sender_id_str": "1",
             "sender_screen_name": "fakeuser",
@@ -445,7 +439,6 @@ class TestTweetFunctions(TestCase):
         msg = {
             "id_str": "1",
             'text': 'This is a dm.',
-            "text": "hello",
             "sender_id": 1,
             "sender_id_str": "1",
             "sender_screen_name": "fakeuser",
