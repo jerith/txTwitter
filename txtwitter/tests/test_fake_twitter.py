@@ -280,6 +280,17 @@ class TestFakeTwitterAPI(TestCase):
     def assert_api_method_uri(self, method_name, uri_path):
         self.assert_method_uri(method_name, self._api_uri(uri_path))
 
+    def test__dm_or_404(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        dm = twitter.add_dm('1', 'hello', '1', '2')
+
+        self.assertEqual(api._dm_or_404('1'), dm)
+        self.assertRaises(self._TwitterAPIError, api._dm_or_404, '2')
+
     # Timelines
 
     def test_dispatch_statuses_mentions_timeline(self):

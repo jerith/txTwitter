@@ -468,6 +468,12 @@ class FakeTwitterAPI(object):
             self._404()
         return user
 
+    def _dm_or_404(self, id_str):
+        dm = self._twitter_data.get_dm(id_str)
+        if dm is None:
+            self._404()
+        return dm
+
     # Timelines
 
     def _filter_timeline(self, tweets_iter, count, since_id, max_id):
@@ -684,10 +690,7 @@ class FakeTwitterAPI(object):
 
     @fake_api('direct_messages/show.json')
     def direct_messages_show(self, id):
-        dm = self._twitter_data.dms.get(id)
-
-        if dm is None:
-            self._404()
+        dm = self._dm_or_404(id)
 
         if (dm.recipient_id_str != self._user_id_str and
                 dm.sender_id_str != self._user_id_str):
@@ -701,10 +704,7 @@ class FakeTwitterAPI(object):
 
     @fake_api('direct_messages/destroy.json')
     def direct_messages_destroy(self, id, include_entities=None):
-        dm = self._twitter_data.dms.get(id)
-
-        if dm is None:
-            self._404()
+        dm = self._dm_or_404(id)
 
         if (dm.recipient_id_str != self._user_id_str and
                 dm.sender_id_str != self._user_id_str):
