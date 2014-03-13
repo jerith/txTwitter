@@ -279,7 +279,7 @@ class FakeTwitterData(object):
             if stream.accepts('dm', dm):
                 stream.deliver(dm.to_dict(self))
 
-    def add_stream(self):
+    def new_stream(self):
         stream = FakeStream()
 
         def finished_callback(r):
@@ -600,7 +600,7 @@ class FakeTwitterAPI(object):
                     return True
             return False
 
-        stream = self._twitter_data.add_stream()
+        stream = self._twitter_data.new_stream()
         stream.add_message_type('tweet', stream_filter_predicate)
         return stream.resp
 
@@ -634,7 +634,7 @@ class FakeTwitterAPI(object):
                 return True
             return False
 
-        stream = self._twitter_data.add_stream()
+        stream = self._twitter_data.new_stream()
         stream.add_message_type('tweet', userstream_tweet_predicate)
         stream.add_message_type('dm', userstream_dm_predicate)
 
