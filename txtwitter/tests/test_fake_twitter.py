@@ -669,7 +669,7 @@ class TestFakeTwitterAPI(TestCase):
         dms = [twitter.new_dm('hello', '1', '2') for _ in range(80)]
 
         self.assertEqual(
-            api.direct_messages_sent(page=2),
+            api.direct_messages_sent(page=2, count=80),
             twitter.to_dicts(*dms[::-1][20:40]))
 
     def test_direct_messages_show(self):
