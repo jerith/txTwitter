@@ -26,10 +26,6 @@ class TestFakeStream(TestCase):
         self.assertFalse(stream.accepts('foo', {'bar': 'qux'}))
         self.assertFalse(stream.accepts('corge', {'grault': 'garply'}))
 
-    def _process_stream_response(self, resp, delegate):
-        protocol = FakeTwitterStreamProtocol(delegate)
-        resp.deliverBody(protocol)
-
     def test_deliver(self):
         stream = self._FakeStream()
 
