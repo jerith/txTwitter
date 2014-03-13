@@ -468,6 +468,12 @@ class FakeTwitterAPI(object):
             self._404()
         return user
 
+    def _dm_or_404(self, id_str):
+        dm = self._twitter_data.get_dm(id_str)
+        if dm is None:
+            self._404()
+        return dm
+
     # Timelines
 
     def _filter_timeline(self, tweets_iter, count, since_id, max_id):
@@ -655,15 +661,14 @@ class FakeTwitterAPI(object):
             dms = [dm for dm in dms if int(dm.id_str) <= max_id]
 
         dms = sorted(dms, reverse=True)
-        return dms if count is None else dms[:count]
+        count = 20 if count is None else min(count, 200)
+        return dms[:count]
 
     @fake_api('direct_messages.json')
     def direct_messages(self, since_id=None, max_id=None, count=None,
                         include_entities=None, skip_status=None):
         dms = self._twitter_data.dms.values()
         dms = [dm for dm in dms if dm.recipient_id_str == self._user_id_str]
-
-        count = 20 if count is None else min(count, 20)
         dms = self._clamp_dms(dms, since_id, max_id, count)
 
         return self._twitter_data.to_dicts(
@@ -674,8 +679,6 @@ class FakeTwitterAPI(object):
                              include_entities=None, page=None):
         dms = self._twitter_data.dms.values()
         dms = [dm for dm in dms if dm.sender_id_str == self._user_id_str]
-
-        count = 200 if count is None else min(count, 200)
         dms = self._clamp_dms(dms, since_id, max_id, count)
 
         if page is None:
@@ -689,13 +692,11 @@ class FakeTwitterAPI(object):
 
     @fake_api('direct_messages/show.json')
     def direct_messages_show(self, id):
-        dm = self._twitter_data.dms.get(id)
-
-        if dm is None:
-            self._404()
+        dm = self._dm_or_404(id)
 
         if (dm.recipient_id_str != self._user_id_str and
                 dm.sender_id_str != self._user_id_str):
+            # The actual response given to us by Twitter
             raise TwitterAPIError(403, "Forbidden", json.dumps({
                 "errors": [{
                     "message": "There was an error sending your message: .",
@@ -706,13 +707,11 @@ class FakeTwitterAPI(object):
 
     @fake_api('direct_messages/destroy.json')
     def direct_messages_destroy(self, id, include_entities=None):
-        dm = self._twitter_data.dms.get(id)
-
-        if dm is None:
-            self._404()
+        dm = self._dm_or_404(id)
 
         if (dm.recipient_id_str != self._user_id_str and
                 dm.sender_id_str != self._user_id_str):
+            # The actual response given to us by Twitter
             raise TwitterAPIError(403, "Forbidden", json.dumps({
                 "errors": [{
                     "message": "There was an error sending your message: .",

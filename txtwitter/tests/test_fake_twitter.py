@@ -464,6 +464,17 @@ class TestFakeTwitterAPI(TestCase):
         self.assertEqual(api._user_or_404('1'), user)
         self.assertRaises(self._TwitterAPIError, api._user_or_404, '2')
 
+    def test__dm_or_404(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        dm = twitter.add_dm('1', 'hello', '1', '2')
+
+        self.assertEqual(api._dm_or_404('1'), dm)
+        self.assertRaises(self._TwitterAPIError, api._dm_or_404, '2')
+
     # Timelines
 
     def test_dispatch_statuses_mentions_timeline(self):
@@ -980,7 +991,7 @@ class TestFakeTwitterAPI(TestCase):
         dms = [twitter.new_dm('hello', '1', '2') for _ in range(80)]
 
         self.assertEqual(
-            api.direct_messages_sent(page=2),
+            api.direct_messages_sent(page=2, count=80),
             twitter.to_dicts(*dms[::-1][20:40]))
 
     def test_direct_messages_show(self):
