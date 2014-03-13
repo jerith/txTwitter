@@ -21,10 +21,24 @@ class TestFakeStream(TestCase):
 
     def test_accepts(self):
         stream = self._FakeStream()
-        stream.add_message_type('foo', lambda data: data['bar'] == 'baz')
+        stream.add_message_type('foo', lambda data: data.get('bar') == 'baz')
         self.assertTrue(stream.accepts('foo', {'bar': 'baz'}))
-        self.assertFalse(stream.accepts('foo', {'bar': 'qux'}))
         self.assertFalse(stream.accepts('corge', {'grault': 'garply'}))
+
+    def test_accepts_multiple_message_types(self):
+        stream = self._FakeStream()
+        stream.add_message_type('foo', lambda data: data.get('bar') == 'baz')
+        self.assertTrue(stream.accepts('foo', {'bar': 'baz'}))
+
+    def test_accepts_data_mismatch(self):
+        stream = self._FakeStream()
+        stream.add_message_type('foo', lambda data: data.get('bar') == 'baz')
+        self.assertFalse(stream.accepts('foo', {'grault': 'garply'}))
+
+    def test_accepts_message_type_mismatch(self):
+        stream = self._FakeStream()
+        stream.add_message_type('foo', lambda data: data.get('bar') == 'baz')
+        self.assertFalse(stream.accepts('corge', {'bar': 'baz'}))
 
     def test_deliver(self):
         stream = self._FakeStream()
