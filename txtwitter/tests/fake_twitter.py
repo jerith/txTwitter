@@ -694,6 +694,7 @@ class FakeTwitterAPI(object):
 
         if (dm.recipient_id_str != self._user_id_str and
                 dm.sender_id_str != self._user_id_str):
+            # The actual response given to us by Twitter
             raise TwitterAPIError(403, "Forbidden", json.dumps({
                 "errors": [{
                     "message": "There was an error sending your message: .",
@@ -708,6 +709,7 @@ class FakeTwitterAPI(object):
 
         if (dm.recipient_id_str != self._user_id_str and
                 dm.sender_id_str != self._user_id_str):
+            # The actual response given to us by Twitter
             raise TwitterAPIError(403, "Forbidden", json.dumps({
                 "errors": [{
                     "message": "There was an error sending your message: .",
