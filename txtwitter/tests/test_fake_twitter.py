@@ -14,6 +14,36 @@ def from_fake_twitter(name):
     return prop
 
 
+class TestFakeTwitterHelpers(TestCase):
+    _extract_user_mentions = from_fake_twitter('extract_user_mentions')
+    _FakeTwitterData = from_fake_twitter('FakeTwitterData')
+
+    def test_extract_user_mentions(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+
+        text = "hello @fakeuser and @fakeuser2"
+        self.assertEqual(self._extract_user_mentions(twitter, text), [{
+            'id': 1,
+            'id_str': '1',
+            'indices': [6, 15],
+            'name': 'Fake User',
+            'screen_name': 'fakeuser'
+        }, {
+            'id': 2,
+            'id_str': '2',
+            'indices': [20, 30],
+            'name': 'Fake User 2',
+            'screen_name': 'fakeuser2'
+        }])
+
+    def test_extract_user_mentions_user_not_found(self):
+        twitter = self._FakeTwitterData()
+        text = "hello @fakeuser and @fakeuser2"
+        self.assertEqual(self._extract_user_mentions(twitter, text), [])
+
+
 class TestFakeStream(TestCase):
     _FakeStream = from_fake_twitter('FakeStream')
 
