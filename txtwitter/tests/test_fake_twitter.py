@@ -90,7 +90,9 @@ class TestFakeStream(TestCase):
     def test_accepts_multiple_message_types(self):
         stream = self._FakeStream()
         stream.add_message_type('foo', lambda data: data.get('bar') == 'baz')
+        stream.add_message_type('ham', lambda data: data.get('eggs') == 'spam')
         self.assertTrue(stream.accepts('foo', {'bar': 'baz'}))
+        self.assertTrue(stream.accepts('ham', {'eggs': 'spam'}))
 
     def test_accepts_data_mismatch(self):
         stream = self._FakeStream()
