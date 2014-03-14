@@ -722,11 +722,364 @@ class TestTwitterClient(TestCase):
 
     # Direct Messages
 
-    # TODO: Tests for direct_messages()
-    # TODO: Tests for direct_messages_sent()
-    # TODO: Tests for direct_messages_show()
-    # TODO: Tests for direct_messages_destroy()
-    # TODO: Tests for direct_messages_new()
+    @inlineCallbacks
+    def test_direct_messages(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages.json'
+
+        response_data = [{
+            # Truncated dm data.
+            "id": 1,
+            "id_str": "1",
+            "text": "hello",
+            "sender_id": 1,
+            "sender_id_str": "1",
+            "sender_screen_name": "fakeuser",
+            "recipient_id": 2,
+            "recipient_id_str": "2",
+            "recipient_screen_name": "fakeuser2",
+        }]
+
+        agent.add_expected_request(
+            'GET', uri, {}, self._resp_json(response_data))
+
+        resp = yield client.direct_messages()
+        self.assertEqual(resp, response_data)
+
+    @inlineCallbacks
+    def test_direct_messages_all_params(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages.json'
+
+        expected_params = {
+            'count': '10',
+            'since_id': '123',
+            'max_id': '321',
+            'skip_status': 'false',
+            'include_entities': 'false',
+        }
+
+        response_data = [{
+            # Truncated dm data.
+            "id": 1,
+            "id_str": "1",
+            "text": "hello",
+            "sender_id": 1,
+            "sender_id_str": "1",
+            "sender_screen_name": "fakeuser",
+            "recipient_id": 2,
+            "recipient_id_str": "2",
+            "recipient_screen_name": "fakeuser2",
+        }]
+
+        agent.add_expected_request(
+            'GET', uri, expected_params, self._resp_json(response_data))
+
+        resp = yield client.direct_messages(
+            count=10, since_id='123', max_id='321', skip_status=False,
+            include_entities=False)
+        self.assertEqual(resp, response_data)
+
+    @inlineCallbacks
+    def test_direct_messages_sent(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/sent.json'
+
+        response_data = [{
+            # Truncated dm data.
+            "id": 1,
+            "id_str": "1",
+            "text": "hello",
+            "sender_id": 1,
+            "sender_id_str": "1",
+            "sender_screen_name": "fakeuser",
+            "recipient_id": 2,
+            "recipient_id_str": "2",
+            "recipient_screen_name": "fakeuser2",
+        }]
+
+        agent.add_expected_request(
+            'GET', uri, {}, self._resp_json(response_data))
+
+        resp = yield client.direct_messages_sent()
+        self.assertEqual(resp, response_data)
+
+    @inlineCallbacks
+    def test_direct_messages_sent_all_params(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/sent.json'
+
+        expected_params = {
+            'count': '10',
+            'since_id': '123',
+            'max_id': '321',
+            'page': '2',
+            'include_entities': 'false',
+        }
+
+        response_data = [{
+            # Truncated dm data.
+            "id": 1,
+            "id_str": "1",
+            "text": "hello",
+            "sender_id": 1,
+            "sender_id_str": "1",
+            "sender_screen_name": "fakeuser",
+            "recipient_id": 2,
+            "recipient_id_str": "2",
+            "recipient_screen_name": "fakeuser2",
+        }]
+
+        agent.add_expected_request(
+            'GET', uri, expected_params, self._resp_json(response_data))
+
+        resp = yield client.direct_messages_sent(
+            count=10, since_id='123', max_id='321', page=2,
+            include_entities=False)
+        self.assertEqual(resp, response_data)
+
+    @inlineCallbacks
+    def test_direct_messages_show(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/show.json'
+
+        response_data = [{
+            # Truncated dm data.
+            "id": 1,
+            "id_str": "1",
+            "text": "hello",
+            "sender_id": 1,
+            "sender_id_str": "1",
+            "sender_screen_name": "fakeuser",
+            "recipient_id": 2,
+            "recipient_id_str": "2",
+            "recipient_screen_name": "fakeuser2",
+        }]
+
+        agent.add_expected_request(
+            'GET', uri, {'id': '1'}, self._resp_json(response_data))
+
+        resp = yield client.direct_messages_show('1')
+        self.assertEqual(resp, response_data[0])
+
+    def test_direct_messages_show_not_found(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/show.json'
+
+        err_dict = {
+            "errors": [{
+                "message": "Sorry, that page does not exist",
+                "code": 34,
+            }]
+        }
+
+        agent.add_expected_request(
+            'GET', uri, {'id': '1'}, self._resp_json(err_dict, 404))
+
+        d = client.direct_messages_show(1)
+        d.addErrback(lambda f: f.value)
+        err = yield d
+
+        code, _phrase, body = err.args
+        self.assertEqual((404, err_dict), (code, json.loads(body)))
+
+    def test_direct_messages_show_forbidden(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/show.json'
+
+        err_dict = {
+            "errors": [{
+                "message": "There was an error sending your message: .",
+                "code": 151
+            }]
+        }
+
+        agent.add_expected_request(
+            'GET', uri, {'id': '1'}, self._resp_json(err_dict, 403))
+
+        d = client.direct_messages_show(1)
+        d.addErrback(lambda f: f.value)
+        err = yield d
+
+        code, _phrase, body = err.args
+        self.assertEqual((403, err_dict), (code, json.loads(body)))
+
+    @inlineCallbacks
+    def test_direct_messages_destroy(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/destroy.json'
+
+        response_data = {
+            # Truncated dm data.
+            "id": 1,
+            "id_str": "1",
+            "text": "hello",
+            "sender_id": 1,
+            "sender_id_str": "1",
+            "sender_screen_name": "fakeuser",
+            "recipient_id": 2,
+            "recipient_id_str": "2",
+            "recipient_screen_name": "fakeuser2",
+        }
+
+        agent.add_expected_request(
+            'POST', uri, {'id': '1'}, self._resp_json(response_data))
+
+        resp = yield client.direct_messages_destroy('1')
+        self.assertEqual(resp, response_data)
+
+    def test_direct_messages_destroy_all_params(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/destroy.json'
+
+        expected_params = {
+            'id': '1',
+            'include_entities': 'false'
+        }
+
+        response_data = {
+            # Truncated dm data.
+            "id": 1,
+            "id_str": "1",
+            "text": "hello",
+            "sender_id": 1,
+            "sender_id_str": "1",
+            "sender_screen_name": "fakeuser",
+            "recipient_id": 2,
+            "recipient_id_str": "2",
+            "recipient_screen_name": "fakeuser2",
+        }
+
+        agent.add_expected_request(
+            'POST', uri, expected_params, self._resp_json(response_data))
+
+        resp = yield client.direct_messages_destroy(
+            '1', include_entities=False)
+        self.assertEqual(resp, response_data)
+
+    def test_direct_messages_destroy_not_found(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/destroy.json'
+
+        err_dict = {
+            "errors": [{
+                "message": "Sorry, that page does not exist",
+                "code": 34,
+            }]
+        }
+
+        agent.add_expected_request(
+            'GET', uri, {'id': '1'}, self._resp_json(err_dict, 404))
+
+        d = client.direct_messages_destroy(1)
+        d.addErrback(lambda f: f.value)
+        err = yield d
+
+        code, _phrase, body = err.args
+        self.assertEqual((404, err_dict), (code, json.loads(body)))
+
+    def test_direct_messages_destroy_forbidden(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/destroy.json'
+
+        err_dict = {
+            "errors": [{
+                "message": "There was an error sending your message: .",
+                "code": 151
+            }]
+        }
+
+        agent.add_expected_request(
+            'GET', uri, {'id': '1'}, self._resp_json(err_dict, 403))
+
+        d = client.direct_messages_destroy(1)
+        d.addErrback(lambda f: f.value)
+        err = yield d
+
+        code, _phrase, body = err.args
+        self.assertEqual((403, err_dict), (code, json.loads(body)))
+
+    @inlineCallbacks
+    def test_direct_messages_new_by_user_id(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/new.json'
+
+        expected_params = {
+            'text': 'hello',
+            'user_id': '2'
+        }
+
+        response_data = {
+            # Truncated dm data.
+            "id": 1,
+            "id_str": "1",
+            "text": "hello",
+            "sender_id": 1,
+            "sender_id_str": "1",
+            "sender_screen_name": "fakeuser",
+            "recipient_id": 2,
+            "recipient_id_str": "2",
+            "recipient_screen_name": "fakeuser2",
+        }
+
+        agent.add_expected_request(
+            'POST', uri, expected_params, self._resp_json(response_data))
+
+        resp = yield client.direct_messages_new('hello', user_id='2')
+        self.assertEqual(resp, response_data)
+
+    @inlineCallbacks
+    def test_direct_messages_new_by_screen_name(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/new.json'
+
+        expected_params = {
+            'text': 'hello',
+            'screen_name': 'fakeuser2'
+        }
+
+        response_data = {
+            # Truncated dm data.
+            "id": 1,
+            "id_str": "1",
+            "text": "hello",
+            "sender_id": 1,
+            "sender_id_str": "1",
+            "sender_screen_name": "fakeuser",
+            "recipient_id": 2,
+            "recipient_id_str": "2",
+            "recipient_screen_name": "fakeuser2",
+        }
+
+        agent.add_expected_request(
+            'POST', uri, expected_params, self._resp_json(response_data))
+
+        resp = yield client.direct_messages_new(
+            'hello', screen_name='fakeuser2')
+        self.assertEqual(resp, response_data)
+
+    def test_direct_messages_new_bad_request(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/new.json'
+
+        err_dict = {
+            "errors": [{
+                "message": (
+                    "Recipient (user, screen name, or id) "
+                    "parameter is missing."),
+                "code": 38
+            }]
+        }
+
+        agent.add_expected_request(
+            'GET', uri, {'id': '1'}, self._resp_json(err_dict, 400))
+
+        d = client.direct_messages_new('hello')
+        d.addErrback(lambda f: f.value)
+        err = yield d
+
+        code, _phrase, body = err.args
+        self.assertEqual((403, err_dict), (code, json.loads(body)))
 
     # Friends & Followers
 
