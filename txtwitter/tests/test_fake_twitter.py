@@ -127,10 +127,6 @@ class TestFakeTweet(TestCase):
     _FakeTweet = from_fake_twitter('FakeTweet')
     _now = datetime(2014, 3, 11, 10, 48, 22, 687699)
 
-    def setUp(self):
-        from txtwitter.tests import fake_twitter
-        self.patch(fake_twitter, 'now', lambda: self._now)
-
     def test__get_reply_to_status_details_nonreply(self):
         twitter = self._FakeTwitterData()
         twitter.add_user('1', 'fakeuser', 'Fake User')
@@ -185,9 +181,12 @@ class TestFakeTweet(TestCase):
 
     def test_to_dict(self):
         twitter = self._FakeTwitterData()
-        twitter.add_user('1', 'fakeuser', 'Fake User')
-        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
-        tweet = twitter.add_tweet('1', 'hello @fakeuser2', '1')
+        twitter.add_user(
+            '1', 'fakeuser', 'Fake User', created_at=self._now)
+        twitter.add_user(
+            '2', 'fakeuser2', 'Fake User 2', created_at=self._now)
+        tweet = twitter.add_tweet(
+            '1', 'hello @fakeuser2', '1', created_at=self._now)
 
         self.assertEqual(tweet.to_dict(twitter), {
             'created_at': '2014-03-11 10:48:22.687699',
@@ -241,15 +240,14 @@ class TestFakeDM(TestCase):
     _FakeDM = from_fake_twitter('FakeDM')
     _now = datetime(2014, 3, 11, 10, 48, 22, 687699)
 
-    def setUp(self):
-        from txtwitter.tests import fake_twitter
-        self.patch(fake_twitter, 'now', lambda: self._now)
-
     def test__get_sender_details(self):
         twitter = self._FakeTwitterData()
-        twitter.add_user('1', 'fakeuser', 'Fake User')
-        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
-        dm = twitter.add_dm('1', 'hello', '1', '2')
+        twitter.add_user(
+            '1', 'fakeuser', 'Fake User', created_at=self._now)
+        twitter.add_user(
+            '2', 'fakeuser2', 'Fake User 2', created_at=self._now)
+        dm = twitter.add_dm(
+            '1', 'hello', '1', '2', created_at=self._now)
 
         self.assertEqual(dm._get_sender_details(twitter), {
             'sender': {
@@ -266,9 +264,12 @@ class TestFakeDM(TestCase):
 
     def test__get_recipient_details(self):
         twitter = self._FakeTwitterData()
-        twitter.add_user('1', 'fakeuser', 'Fake User')
-        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
-        dm = twitter.add_dm('1', 'hello', '1', '2')
+        twitter.add_user(
+            '1', 'fakeuser', 'Fake User', created_at=self._now)
+        twitter.add_user(
+            '2', 'fakeuser2', 'Fake User 2', created_at=self._now)
+        dm = twitter.add_dm(
+            '1', 'hello', '1', '2', created_at=self._now)
 
         self.assertEqual(dm._get_recipient_details(twitter), {
             'recipient': {
@@ -285,9 +286,12 @@ class TestFakeDM(TestCase):
 
     def test_to_dict(self):
         twitter = self._FakeTwitterData()
-        twitter.add_user('1', 'fakeuser', 'Fake User')
-        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
-        dm = twitter.add_dm('1', 'hello @fakeuser2', '1', '2')
+        twitter.add_user(
+            '1', 'fakeuser', 'Fake User', created_at=self._now)
+        twitter.add_user(
+            '2', 'fakeuser2', 'Fake User 2', created_at=self._now)
+        dm = twitter.add_dm(
+            '1', 'hello @fakeuser2', '1', '2', created_at=self._now)
 
         self.assertEqual(dm.to_dict(twitter), {
             'created_at': '2014-03-11 10:48:22.687699',
