@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from urllib import urlencode
 
 from twisted.protocols.basic import LineOnlyReceiver
@@ -13,25 +14,25 @@ def from_fake_twitter(name):
     return prop
 
 
-class TestFakeTweet(TestCase):
+class TestFakeTwitterHelpers(TestCase):
+    _extract_user_mentions = from_fake_twitter('extract_user_mentions')
     _FakeTwitterData = from_fake_twitter('FakeTwitterData')
-    _FakeTweet = from_fake_twitter('FakeTweet')
 
-    def test__get_user_mentions_none(self):
+    def test_extract_user_mentions_none(self):
         twitter = self._FakeTwitterData()
-        tweet = self._FakeTweet('1', 'hello', '1')
-        self.assertEqual([], tweet._get_user_mentions(twitter))
+        text = 'hello'
+        self.assertEqual([], self._extract_user_mentions(twitter, text))
 
-    def test__get_user_mentions_not_user(self):
+    def test_extract_user_mentions_not_user(self):
         twitter = self._FakeTwitterData()
-        tweet = self._FakeTweet('1', 'hello @notuser', '1')
-        self.assertEqual([], tweet._get_user_mentions(twitter))
+        text = 'hello @notuser'
+        self.assertEqual([], self._extract_user_mentions(twitter, text))
 
-    def test__get_user_mentions_one_user(self):
+    def test_extract_user_mentions_one_user(self):
         twitter = self._FakeTwitterData()
         twitter.add_user('1', 'fakeuser', 'Fake User')
-        tweet = self._FakeTweet('1', 'hello @fakeuser', '1')
-        self.assertEqual(tweet._get_user_mentions(twitter), [{
+        text = 'hello @fakeuser'
+        self.assertEqual(self._extract_user_mentions(twitter, text), [{
             'id_str': '1',
             'id': 1,
             'indices': [6, 15],
@@ -39,12 +40,12 @@ class TestFakeTweet(TestCase):
             'name': 'Fake User',
         }])
 
-    def test__get_user_mentions_two_users(self):
+    def test_extract_user_mentions_two_users(self):
         twitter = self._FakeTwitterData()
         twitter.add_user('1', 'fakeuser', 'Fake User')
         twitter.add_user('2', 'fakeuser2', 'Fake User')
-        tweet = self._FakeTweet('1', 'hello @fakeuser @fakeuser2', '1')
-        self.assertEqual(tweet._get_user_mentions(twitter), [{
+        text = 'hello @fakeuser @fakeuser2'
+        self.assertEqual(self._extract_user_mentions(twitter, text), [{
             'id_str': '1',
             'id': 1,
             'indices': [6, 15],
@@ -58,11 +59,11 @@ class TestFakeTweet(TestCase):
             'name': 'Fake User',
         }])
 
-    def test__get_user_mentions_one_user_twice(self):
+    def test_extract_user_mentions_one_user_twice(self):
         twitter = self._FakeTwitterData()
         twitter.add_user('1', 'fakeuser', 'Fake User')
-        tweet = self._FakeTweet('1', 'hello @fakeuser @fakeuser', '1')
-        self.assertEqual(tweet._get_user_mentions(twitter), [{
+        text = 'hello @fakeuser @fakeuser'
+        self.assertEqual(self._extract_user_mentions(twitter, text), [{
             'id_str': '1',
             'id': 1,
             'indices': [6, 15],
@@ -75,6 +76,55 @@ class TestFakeTweet(TestCase):
             'screen_name': 'fakeuser',
             'name': 'Fake User',
         }])
+
+
+class TestFakeStream(TestCase):
+    _FakeStream = from_fake_twitter('FakeStream')
+
+    def test_accepts(self):
+        stream = self._FakeStream()
+        stream.add_message_type('foo', lambda data: data.get('bar') == 'baz')
+        self.assertTrue(stream.accepts('foo', {'bar': 'baz'}))
+        self.assertFalse(stream.accepts('corge', {'grault': 'garply'}))
+
+    def test_accepts_multiple_message_types(self):
+        stream = self._FakeStream()
+        stream.add_message_type('foo', lambda data: data.get('bar') == 'baz')
+        stream.add_message_type('ham', lambda data: data.get('eggs') == 'spam')
+        self.assertTrue(stream.accepts('foo', {'bar': 'baz'}))
+        self.assertTrue(stream.accepts('ham', {'eggs': 'spam'}))
+        self.assertFalse(stream.accepts('ham', {'bar': 'baz'}))
+        self.assertFalse(stream.accepts('foo', {'eggs': 'spam'}))
+
+    def test_accepts_data_mismatch(self):
+        stream = self._FakeStream()
+        stream.add_message_type('foo', lambda data: data.get('bar') == 'baz')
+        self.assertFalse(stream.accepts('foo', {'grault': 'garply'}))
+
+    def test_accepts_message_type_mismatch(self):
+        stream = self._FakeStream()
+        stream.add_message_type('foo', lambda data: data.get('bar') == 'baz')
+        self.assertFalse(stream.accepts('corge', {'bar': 'baz'}))
+
+    def test_deliver(self):
+        stream = self._FakeStream()
+
+        messages = []
+        protocol = FakeTwitterStreamProtocol(messages.append)
+        stream.resp.deliverBody(protocol)
+
+        stream.deliver({'foo': 'bar'})
+        stream.deliver({'baz': 'qux'})
+
+        self.assertEqual(messages, [
+            {'foo': 'bar'},
+            {'baz': 'qux'}
+        ])
+
+
+class TestFakeTweet(TestCase):
+    _FakeTwitterData = from_fake_twitter('FakeTwitterData')
+    _FakeTweet = from_fake_twitter('FakeTweet')
 
     def test__get_reply_to_status_details_nonreply(self):
         twitter = self._FakeTwitterData()
@@ -129,6 +179,104 @@ class TestFakeTweet(TestCase):
         })
 
 
+class TestFakeDM(TestCase):
+    _FakeTwitterData = from_fake_twitter('FakeTwitterData')
+    _FakeDM = from_fake_twitter('FakeDM')
+    _now = datetime(2014, 3, 11, 10, 48, 22, 687699)
+
+    def setUp(self):
+        from txtwitter.tests import fake_twitter
+        self.patch(fake_twitter, 'now', lambda: self._now)
+
+    def test__get_sender_details(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+        dm = twitter.add_dm('1', 'hello', '1', '2')
+
+        self.assertEqual(dm._get_sender_details(twitter), {
+            'sender': {
+                'created_at': '2014-03-11 10:48:22.687699',
+                'id': 1,
+                'id_str': '1',
+                'name': 'Fake User',
+                'screen_name': 'fakeuser'
+            },
+            'sender_id': 1,
+            'sender_id_str': '1',
+            'sender_screen_name': 'fakeuser'
+        })
+
+    def test__get_recipient_details(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+        dm = twitter.add_dm('1', 'hello', '1', '2')
+
+        self.assertEqual(dm._get_recipient_details(twitter), {
+            'recipient': {
+                'created_at': '2014-03-11 10:48:22.687699',
+                'id': 2,
+                'id_str': '2',
+                'name': 'Fake User 2',
+                'screen_name': 'fakeuser2'
+            },
+            'recipient_id': 2,
+            'recipient_id_str': '2',
+            'recipient_screen_name': 'fakeuser2'
+        })
+
+    def test_to_dict(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+        dm = twitter.add_dm('1', 'hello @fakeuser2', '1', '2')
+
+        self.assertEqual(dm.to_dict(twitter), {
+            'created_at': '2014-03-11 10:48:22.687699',
+            'id': 1,
+            'id_str': '1',
+            'text': 'hello @fakeuser2',
+            'sender': {
+                'created_at': '2014-03-11 10:48:22.687699',
+                'id': 1,
+                'id_str': '1',
+                'name': 'Fake User',
+                'screen_name': 'fakeuser'
+            },
+            'sender_id': 1,
+            'sender_id_str': '1',
+            'sender_screen_name': 'fakeuser',
+            'recipient': {
+                'created_at': '2014-03-11 10:48:22.687699',
+                'id': 2,
+                'id_str': '2',
+                'name': 'Fake User 2',
+                'screen_name': 'fakeuser2'
+            },
+            'recipient_id': 2,
+            'recipient_id_str': '2',
+            'recipient_screen_name': 'fakeuser2',
+            'entities': {
+                'user_mentions': [{
+                    'id': 2,
+                    'id_str': '2',
+                    'indices': [6, 16],
+                    'name': 'Fake User 2',
+                    'screen_name': 'fakeuser2'
+                }]
+            },
+        })
+
+    def test_to_dict_not_include_entities(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+        dm = twitter.add_dm('1', 'hello @fakeuser2', '1', '2')
+        dm_dict = dm.to_dict(twitter, include_entities=False)
+        self.assertTrue('entities' not in dm_dict)
+
+
 class TestFakeTwitter(TestCase):
     _FakeTwitter = from_fake_twitter('FakeTwitter')
     _FakeTwitterClient = from_fake_twitter('FakeTwitterClient')
@@ -181,6 +329,7 @@ class TestFakeTwitterAPI(TestCase):
     _FakeTwitter = from_fake_twitter('FakeTwitter')
     _FakeTwitterData = from_fake_twitter('FakeTwitterData')
     _FakeTwitterAPI = from_fake_twitter('FakeTwitterAPI')
+    _TwitterAPIError = from_fake_twitter('TwitterAPIError')
 
     def _build_uri(self, base, path, params=None):
         uri = '%s%s' % (base, path)
@@ -198,6 +347,17 @@ class TestFakeTwitterAPI(TestCase):
 
     def assert_api_method_uri(self, method_name, uri_path):
         self.assert_method_uri(method_name, self._api_uri(uri_path))
+
+    def test__dm_or_404(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        dm = twitter.add_dm('1', 'hello', '1', '2')
+
+        self.assertEqual(api._dm_or_404('1'), dm)
+        self.assertRaises(self._TwitterAPIError, api._dm_or_404, '2')
 
     # Timelines
 
@@ -332,7 +492,7 @@ class TestFakeTwitterAPI(TestCase):
         self.assertEqual(messages, twitter.to_dicts(tweet1, tweet2))
 
         resp.finished()
-        self.assertEqual(twitter.tweet_streams, {})
+        self.assertEqual(twitter.streams, {})
 
     # TODO: More tests for fake stream_filter()
 
@@ -344,7 +504,7 @@ class TestFakeTwitterAPI(TestCase):
         uri = self._build_uri(TWITTER_USERSTREAM_URL, 'user.json')
         self.assert_method_uri('userstream_user', uri)
 
-    def test_userstream_user_with_user(self):
+    def test_userstream_user_with_user_friends(self):
         twitter = self._FakeTwitterData()
         twitter.add_user('1', 'fakeuser', 'Fake User')
         twitter.add_user('2', 'fakeuser2', 'Fake User')
@@ -354,18 +514,65 @@ class TestFakeTwitterAPI(TestCase):
         resp = api.userstream_user(stringify_friend_ids='true', with_='user')
         self._process_stream_response(resp, messages.append)
         self.assertEqual(messages, [{'friends_str': []}])
+
+        resp.finished()
+        self.assertEqual(twitter.streams, {})
+
+    def test_userstream_user_with_user_tweets(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        messages = []
+        resp = api.userstream_user(stringify_friend_ids='true', with_='user')
+        self._process_stream_response(resp, messages.append)
         messages.pop(0)
 
         tweet1 = twitter.new_tweet('hello', '1')
         twitter.new_tweet('hello', '2')
         self.assertEqual(messages, twitter.to_dicts(tweet1))
 
+        resp.finished()
+        self.assertEqual(twitter.streams, {})
+
+    def test_userstream_user_with_user_mentions(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        messages = []
+        resp = api.userstream_user(stringify_friend_ids='true', with_='user')
+        self._process_stream_response(resp, messages.append)
+        messages.pop(0)
+
         twitter.new_tweet('@fakeuser2', '2')
         tweet2 = twitter.new_tweet('@fakeuser', '2')
-        self.assertEqual(messages, twitter.to_dicts(tweet1, tweet2))
+        self.assertEqual(messages, twitter.to_dicts(tweet2))
 
         resp.finished()
-        self.assertEqual(twitter.tweet_streams, {})
+        self.assertEqual(twitter.streams, {})
+
+    def test_userstream_user_with_user_dms(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        twitter.add_user('3', 'fakeuser3', 'Fake User')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        messages = []
+        resp = api.userstream_user(stringify_friend_ids='true', with_='user')
+        self._process_stream_response(resp, messages.append)
+        messages.pop(0)
+
+        dm1 = twitter.new_dm('hello', '1', '2')
+        dm2 = twitter.new_dm('hello', '2', '1')
+        twitter.new_dm('hello', '2', '3')
+        self.assertEqual(messages, twitter.to_dicts(dm1, dm2))
+
+        resp.finished()
+        self.assertEqual(twitter.streams, {})
 
         # TODO: Replies
 
@@ -373,11 +580,274 @@ class TestFakeTwitterAPI(TestCase):
 
     # Direct Messages
 
-    # TODO: Tests for fake direct_messages()
-    # TODO: Tests for fake direct_messages_sent()
-    # TODO: Tests for fake direct_messages_show()
-    # TODO: Tests for fake direct_messages_destroy()
-    # TODO: Tests for fake direct_messages_new()
+    def test_direct_messages(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        twitter.add_user('3', 'fakeuser3', 'Fake User')
+
+        dm1 = twitter.new_dm('hello', '2', '1')
+        dm2 = twitter.new_dm('hello', '3', '1')
+        twitter.new_dm('hello', '1', '2')
+        twitter.new_dm('hello', '1', '3')
+
+        self.assertEqual(api.direct_messages(), twitter.to_dicts(dm2, dm1))
+
+    def test_direct_messages_limiting(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        dms = [twitter.new_dm('hello', '2', '1') for i in range(21)]
+
+        self.assertEqual(
+            api.direct_messages(),
+            twitter.to_dicts(*dms[::-1][:20]))
+
+    def test_direct_messages_since_id(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        dm1 = twitter.new_dm('hello', '2', '1')
+        dm2 = twitter.new_dm('goodbye', '2', '1')
+
+        self.assertEqual(
+            api.direct_messages(since_id=dm1.id_str),
+            twitter.to_dicts(dm2))
+
+    def test_direct_messages_max_id(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        dm1 = twitter.new_dm('hello', '2', '1')
+        dm2 = twitter.new_dm('goodbye', '2', '1')
+        twitter.new_dm('hello again', '2', '1')
+
+        self.assertEqual(
+            api.direct_messages(max_id=dm2.id_str),
+            twitter.to_dicts(dm2, dm1))
+
+    def test_direct_messages_count(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        twitter.new_dm('hello', '2', '1')
+        dm2 = twitter.new_dm('goodbye', '2', '1')
+        dm3 = twitter.new_dm('hello again', '2', '1')
+
+        self.assertEqual(
+            api.direct_messages(count=2),
+            twitter.to_dicts(dm3, dm2))
+
+    def test_direct_messages_include_entities(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        twitter.new_dm('hello', '2', '1')
+        twitter.new_dm('goodbye', '2', '1')
+
+        dms = api.direct_messages(include_entities=False)
+        self.assertTrue(all('entities' not in dm for dm in dms))
+
+    def test_direct_messages_sent(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        twitter.add_user('3', 'fakeuser3', 'Fake User')
+
+        dm1 = twitter.new_dm('hello', '1', '2')
+        dm2 = twitter.new_dm('hello', '1', '3')
+        twitter.new_dm('hello', '2', '1')
+        twitter.new_dm('hello', '3', '1')
+
+        self.assertEqual(
+            api.direct_messages_sent(),
+            twitter.to_dicts(dm2, dm1))
+
+    def test_direct_messages_sent_since_id(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        dm1 = twitter.new_dm('hello', '1', '2')
+        dm2 = twitter.new_dm('goodbye', '1', '2')
+
+        self.assertEqual(
+            api.direct_messages_sent(since_id=dm1.id_str),
+            twitter.to_dicts(dm2))
+
+    def test_direct_messages_sent_max_id(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        dm1 = twitter.new_dm('hello', '1', '2')
+        dm2 = twitter.new_dm('goodbye', '1', '2')
+        twitter.new_dm('hello again', '1', '2')
+
+        self.assertEqual(
+            api.direct_messages_sent(max_id=dm2.id_str),
+            twitter.to_dicts(dm2, dm1))
+
+    def test_direct_messages_sent_count(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        twitter.new_dm('hello', '1', '2')
+        dm2 = twitter.new_dm('goodbye', '1', '2')
+        dm3 = twitter.new_dm('hello again', '1', '2')
+
+        self.assertEqual(
+            api.direct_messages_sent(count=2),
+            twitter.to_dicts(dm3, dm2))
+
+    def test_direct_messages_sent_include_entities(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        twitter.new_dm('hello', '1', '2')
+        twitter.new_dm('goodbye', '1', '2')
+
+        dms = api.direct_messages_sent(include_entities=False)
+        self.assertTrue(all('entities' not in dm for dm in dms))
+
+    def test_direct_messages_sent_page(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        dms = [twitter.new_dm('hello', '1', '2') for _ in range(80)]
+
+        self.assertEqual(
+            api.direct_messages_sent(page=2, count=80),
+            twitter.to_dicts(*dms[::-1][20:40]))
+
+    def test_direct_messages_show(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        dm = twitter.new_dm('hello', '1', '2')
+
+        found_dms = api.direct_messages_show(dm.id_str)
+        self.assertEqual(twitter.to_dicts(dm), found_dms)
+
+    def test_direct_messages_show_not_found(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+        self.assertRaises(self._TwitterAPIError, api.direct_messages_show, '1')
+
+    def test_direct_messages_show_forbidden(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        twitter.add_user('3', 'fakeuser3', 'Fake User 3')
+        dm = twitter.new_dm('hello', '2', '3')
+
+        self.assertRaises(
+            self._TwitterAPIError, api.direct_messages_show, dm.id_str)
+
+    def test_direct_messages_destroy(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        dm = twitter.new_dm('hello', '1', '2')
+
+        found_dm = api.direct_messages_destroy(dm.id_str)
+        self.assertEqual(dm.to_dict(twitter), found_dm)
+        self.assertTrue(dm.id_str not in twitter.dms)
+
+    def test_direct_messages_destroy_not_found(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+        self.assertRaises(
+            self._TwitterAPIError, api.direct_messages_destroy, '1')
+
+    def test_direct_messages_destroy_forbidden(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        twitter.add_user('3', 'fakeuser3', 'Fake User 3')
+        dm = twitter.new_dm('hello', '2', '3')
+
+        self.assertRaises(
+            self._TwitterAPIError, api.direct_messages_destroy, dm.id_str)
+
+    def test_direct_messages_destroy_not_include_entities(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        dm = twitter.new_dm('hello', '1', '2')
+
+        found_dm = api.direct_messages_destroy(
+            dm.id_str, include_entities=False)
+        self.assertTrue('entities' not in found_dm)
+
+    def test_direct_messages_new_by_user_id(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        sent_dm = api.direct_messages_new('hello', user_id='2')
+        actual_dm = twitter.get_dm(sent_dm['id_str'])
+        self.assertEqual(sent_dm, actual_dm.to_dict(twitter))
+
+    def test_direct_messages_new_by_screen_name(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        sent_dm = api.direct_messages_new('hello', screen_name='fakeuser2')
+        actual_dm = twitter.get_dm(sent_dm['id_str'])
+        self.assertEqual(sent_dm, actual_dm.to_dict(twitter))
+
+    def test_direct_messages_new_no_user_id_or_screen_name(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+        self.assertRaises(
+            self._TwitterAPIError, api.direct_messages_new, 'hello')
 
     # Friends & Followers
 

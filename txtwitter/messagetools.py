@@ -41,6 +41,37 @@ def tweet_user(message):
     return ensure_tweet(message)['user']
 
 
+def is_dm(message):
+    fields = ['id_str', 'text', 'sender', 'recipient']
+    return set(fields).issubset(set(message.keys()))
+
+
+def ensure_dm(message):
+    if not is_dm(message):
+        raise ValueError("Message is not a direct message: %r" % (message,))
+    return message
+
+
+def dm_text(message):
+    return ensure_dm(message)['text']
+
+
+def dm_user_mentions(message):
+    return ensure_dm(message)['entities'].get('user_mentions', [])
+
+
+def dm_id(message):
+    return ensure_dm(message)['id_str']
+
+
+def dm_sender(message):
+    return ensure_dm(message)['sender']
+
+
+def dm_recipient(message):
+    return ensure_dm(message)['recipient']
+
+
 def is_user(user):
     return set(['id_str', 'screen_name']).issubset(set(user.keys()))
 

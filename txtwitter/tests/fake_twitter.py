@@ -16,13 +16,65 @@ from txtwitter.twitter import (
 USER_MENTION_RE = re.compile(r'@[a-zA-Z0-9_]+')
 
 
+def now():
+    return datetime.utcnow()
+
+
+def mention_from_match(twitter_data, match):
+    user = twitter_data.get_user_by_screen_name(match.group(0)[1:])
+
+    if user is None:
+        return None
+
+    return {
+        'id_str': user.id_str,
+        'id': int(user.id_str),
+        'indices': list(match.span(0)),
+        'screen_name': user.screen_name,
+        'name': user.name,
+    }
+
+
+def extract_user_mentions(twitter_data, text):
+    mentions = []
+    for match in USER_MENTION_RE.finditer(text):
+        mention = mention_from_match(twitter_data, match)
+        if mention is not None:
+            mentions.append(mention)
+    return mentions
+
+
+def extract_entities(twitter_data, text):
+    return {
+        'user_mentions': extract_user_mentions(twitter_data, text),
+        # TODO: More entities
+    }
+
+
+class FakeStream(object):
+    def __init__(self):
+        self.resp = FakeResponse(None)
+        self._message_types = {}
+
+    def add_message_type(self, message_type, predicate):
+        self._message_types[message_type] = predicate
+
+    def accepts(self, message_type, data):
+        predicate = self._message_types.get(message_type)
+        return predicate is not None and predicate(data)
+
+    def deliver(self, data):
+        self.resp.deliver_data(json.dumps(data))
+        self.resp.deliver_data('\r\n')
+
+
 class FakeTweet(object):
     def __init__(self, id_str, text, user_id_str, reply_to=None, **kw):
         self.id_str = id_str
         self.text = text
         self.user_id_str = user_id_str
         self.reply_to = reply_to
-        self.created_at = kw.pop('created_at', datetime.utcnow())
+        self.created_at = kw.pop('created_at', now())
         self.kw = kw
 
     def __cmp__(self, other):
@@ -57,38 +109,10 @@ class FakeTweet(object):
 
         match = USER_MENTION_RE.match(self.text)
         if match is not None:
-            mention = self._mention_from_match(twitter_data, match)
+            mention = mention_from_match(twitter_data, match)
             return details(mention['id_str'], mention['screen_name'])
 
         return {}
-
-    def _get_entities(self, twitter_data):
-        return {
-            'user_mentions': self._get_user_mentions(twitter_data),
-            # TODO: More entities
-        }
-
-    def _mention_from_match(self, twitter_data, match):
-        user = twitter_data.get_user_by_screen_name(match.group(0)[1:])
-
-        if user is None:
-            return None
-
-        return {
-            'id_str': user.id_str,
-            'id': int(user.id_str),
-            'indices': list(match.span(0)),
-            'screen_name': user.screen_name,
-            'name': user.name,
-        }
-
-    def _get_user_mentions(self, twitter_data):
-        mentions = []
-        for match in USER_MENTION_RE.finditer(self.text):
-            mention = self._mention_from_match(twitter_data, match)
-            if mention is not None:
-                mentions.append(mention)
-        return mentions
 
     def to_dict(self, twitter_data, trim_user=None, include_my_retweet=None,
                 include_entities=None, contributor_details=None):
@@ -129,7 +153,7 @@ class FakeTweet(object):
             tweet_dict['user'] = user.to_dict(twitter_data)
         tweet_dict.update(self._get_reply_to_status_details(twitter_data))
         tweet_dict.update(self._get_reply_to_user_details(twitter_data))
-        tweet_dict['entities'] = self._get_entities(twitter_data)
+        tweet_dict['entities'] = extract_entities(twitter_data, self.text)
         # Provided keyword args can override any of the above
         tweet_dict.update(self.kw)
 
@@ -140,12 +164,69 @@ class FakeTweet(object):
         return tweet_dict
 
 
+class FakeDM(object):
+    def __init__(self, id_str, text, sender_id_str, recipient_id_str, **kw):
+        self.id_str = id_str
+        self.text = text
+        self.sender_id_str = sender_id_str
+        self.recipient_id_str = recipient_id_str
+        self.created_at = kw.pop('created_at', now())
+        self.kw = kw
+
+    def __cmp__(self, other):
+        return cmp(int(self.id_str), int(other.id_str))
+
+    def _get_sender_details(self, twitter_data):
+        sender = twitter_data.get_user(self.sender_id_str)
+        return {
+            'sender': sender.to_dict(twitter_data),
+            'sender_id': int(self.sender_id_str),
+            'sender_id_str': self.sender_id_str,
+            'sender_screen_name': sender.screen_name
+        }
+
+    def _get_recipient_details(self, twitter_data):
+        recipient = twitter_data.get_user(self.recipient_id_str)
+        return {
+            'recipient': recipient.to_dict(twitter_data),
+            'recipient_id': int(self.recipient_id_str),
+            'recipient_id_str': self.recipient_id_str,
+            'recipient_screen_name': recipient.screen_name
+        }
+
+    def to_dict(self, twitter_data, skip_status=None,
+                include_entities=None, **kw):
+        if include_entities is None:
+            include_entities = True
+        if skip_status is not None:
+            raise NotImplementedError("skip_status param")
+
+        dm_dict = {
+            'id': int(self.id_str),
+            'id_str': self.id_str,
+            'created_at': str(self.created_at),
+            'text': self.text,
+        }
+
+        dm_dict.update(self._get_sender_details(twitter_data))
+        dm_dict.update(self._get_recipient_details(twitter_data))
+        dm_dict['entities'] = extract_entities(twitter_data, self.text)
+
+        # Provided keyword args can override any of the above
+        dm_dict.update(self.kw)
+
+        if not include_entities:
+            dm_dict.pop('entities')
+
+        return dm_dict
+
+
 class FakeUser(object):
     def __init__(self, id_str, screen_name, name, **kw):
         self.id_str = id_str
         self.screen_name = screen_name
         self.name = name
-        self.created_at = kw.pop('created_at', datetime.utcnow())
+        self.created_at = kw.pop('created_at', now())
         self.kw = kw
 
     def to_dict(self, twitter_data):
@@ -169,8 +250,10 @@ class FakeUser(object):
 class FakeTwitterData(object):
     def __init__(self):
         self.users = {}
+        self.dms = {}
         self.tweets = {}
-        self.tweet_streams = {}
+        self.streams = {}
+        self._next_dm_id = 1000
         self._next_tweet_id = 1000
         self._next_user_id = 1000
 
@@ -179,17 +262,41 @@ class FakeTwitterData(object):
         return str(self._next_tweet_id)
 
     @property
+    def next_dm_id(self):
+        return str(self._next_dm_id)
+
+    @property
     def next_user_id(self):
         return str(self._next_user_id)
 
-    def add_tweet_stream(self, resp, predicate):
-        self.tweet_streams[resp] = predicate
+    def broadcast_tweet(self, tweet):
+        for stream in self.streams.itervalues():
+            if stream.accepts('tweet', tweet):
+                stream.deliver(tweet.to_dict(self))
 
-    def remove_tweet_stream(self, resp):
-        self.tweet_streams.pop(resp, None)
+    def broadcast_dm(self, dm):
+        for stream in self.streams.itervalues():
+            if stream.accepts('dm', dm):
+                stream.deliver(dm.to_dict(self))
+
+    def new_stream(self):
+        stream = FakeStream()
+
+        def finished_callback(r):
+            self.remove_stream(stream.resp)
+
+        stream.resp.finished_callback = finished_callback
+        self.streams[stream.resp] = stream
+        return stream
+
+    def remove_stream(self, resp):
+        self.streams.pop(resp, None)
 
     def get_tweet(self, id_str):
         return self.tweets.get(id_str)
+
+    def get_dm(self, id_str):
+        return self.dms.get(id_str)
 
     def get_user(self, id_str):
         return self.users.get(id_str)
@@ -197,11 +304,14 @@ class FakeTwitterData(object):
     def add_tweet(self, *args, **kw):
         tweet = FakeTweet(*args, **kw)
         self.tweets[tweet.id_str] = tweet
-        for resp, predicate in self.tweet_streams.iteritems():
-            if predicate(tweet):
-                resp.deliver_data(json.dumps(tweet.to_dict(self)))
-                resp.deliver_data('\r\n')
+        self.broadcast_tweet(tweet)
         return tweet
+
+    def add_dm(self, *args, **kw):
+        dm = FakeDM(*args, **kw)
+        self.dms[dm.id_str] = dm
+        self.broadcast_dm(dm)
+        return dm
 
     def add_user(self, *args, **kw):
         user = FakeUser(*args, **kw)
@@ -211,6 +321,9 @@ class FakeTwitterData(object):
     def del_tweet(self, id_str):
         self.tweets.pop(id_str)
 
+    def del_dm(self, id_str):
+        self.dms.pop(id_str)
+
     def del_user(self, id_str):
         self.users.pop(id_str)
 
@@ -219,6 +332,14 @@ class FakeTwitterData(object):
             self.next_tweet_id, text, user_id_str, *args, **kw)
         self._next_tweet_id += 10
         return tweet
+
+    def new_dm(self, text, sender_id_str, recipient_id_str, *args, **kw):
+        dm = self.add_dm(
+            self.next_dm_id, text, sender_id_str, recipient_id_str,
+            *args, **kw)
+
+        self._next_dm_id += 10
+        return dm
 
     def new_user(self, screen_name, name, *args, **kw):
         user = self.add_user(self.next_user_id, screen_name, name, *args, **kw)
@@ -347,6 +468,12 @@ class FakeTwitterAPI(object):
             self._404()
         return user
 
+    def _dm_or_404(self, id_str):
+        dm = self._twitter_data.get_dm(id_str)
+        if dm is None:
+            self._404()
+        return dm
+
     # Timelines
 
     def _filter_timeline(self, tweets_iter, count, since_id, max_id):
@@ -462,16 +589,6 @@ class FakeTwitterAPI(object):
 
     # Streaming
 
-    def _make_tweet_stream(self, predicate):
-        resp = FakeResponse(None)
-
-        def finished_callback(r):
-            self._twitter_data.remove_tweet_stream(resp)
-
-        self._twitter_data.add_tweet_stream(resp, predicate)
-        resp.finished_callback = finished_callback
-        return resp
-
     @fake_api('statuses/filter.json', 'stream')
     def stream_filter(self, follow=None, track=None, locations=None,
                       stall_warnings=None):
@@ -489,7 +606,9 @@ class FakeTwitterAPI(object):
                     return True
             return False
 
-        return self._make_tweet_stream(stream_filter_predicate)
+        stream = self._twitter_data.new_stream()
+        stream.add_message_type('tweet', stream_filter_predicate)
+        return stream.resp
 
     # TODO: Implement stream_sample()
     # TODO: Implement stream_firehose()
@@ -505,7 +624,7 @@ class FakeTwitterAPI(object):
         if with_ != 'user':
             raise NotImplementedError("with != followings")
 
-        def userstream_predicate(tweet):
+        def userstream_tweet_predicate(tweet):
             if tweet.user_id_str == self._user_id_str:
                 return True
             if mention_re.search(tweet.text):
@@ -514,18 +633,110 @@ class FakeTwitterAPI(object):
                 pass
             return False
 
-        resp = self._make_tweet_stream(userstream_predicate)
+        def userstream_dm_predicate(dm):
+            if dm.recipient_id_str == self._user_id_str:
+                return True
+            if dm.sender_id_str == self._user_id_str:
+                return True
+            return False
+
+        stream = self._twitter_data.new_stream()
+        stream.add_message_type('tweet', userstream_tweet_predicate)
+        stream.add_message_type('dm', userstream_dm_predicate)
+
         # TODO: Proper friends.
-        resp.deliver_data(json.dumps({'friends_str': []}) + '\r\n')
-        return resp
+        stream.deliver({'friends_str': []})
+
+        return stream.resp
 
     # Direct Messages
+    def _clamp_dms(self, dms, since_id=None, max_id=None, count=None):
+        if since_id is not None:
+            since_id = int(since_id)
+            dms = [dm for dm in dms if int(dm.id_str) > since_id]
+        if max_id is not None:
+            max_id = int(max_id)
+            dms = [dm for dm in dms if int(dm.id_str) <= max_id]
 
-    # TODO: Implement direct_messages()
-    # TODO: Implement direct_messages_sent()
-    # TODO: Implement direct_messages_show()
-    # TODO: Implement direct_messages_destroy()
-    # TODO: Implement direct_messages_new()
+        dms = sorted(dms, reverse=True)
+        count = 20 if count is None else min(count, 200)
+        return dms[:count]
+
+    @fake_api('direct_messages.json')
+    def direct_messages(self, since_id=None, max_id=None, count=None,
+                        include_entities=None, skip_status=None):
+        dms = self._twitter_data.dms.values()
+        dms = [dm for dm in dms if dm.recipient_id_str == self._user_id_str]
+        dms = self._clamp_dms(dms, since_id, max_id, count)
+
+        return self._twitter_data.to_dicts(
+            *dms, include_entities=include_entities, skip_status=skip_status)
+
+    @fake_api('direct_messages/sent.json')
+    def direct_messages_sent(self, since_id=None, max_id=None, count=None,
+                             include_entities=None, page=None):
+        dms = self._twitter_data.dms.values()
+        dms = [dm for dm in dms if dm.sender_id_str == self._user_id_str]
+        dms = self._clamp_dms(dms, since_id, max_id, count)
+
+        if page is None:
+            page = 1
+
+        page_end = page * 20
+        dms = dms[page_end - 20:page_end]
+
+        return self._twitter_data.to_dicts(
+            *dms, include_entities=include_entities)
+
+    @fake_api('direct_messages/show.json')
+    def direct_messages_show(self, id):
+        dm = self._dm_or_404(id)
+
+        if (dm.recipient_id_str != self._user_id_str and
+                dm.sender_id_str != self._user_id_str):
+            # The actual response given to us by Twitter
+            raise TwitterAPIError(403, "Forbidden", json.dumps({
+                "errors": [{
+                    "message": "There was an error sending your message: .",
+                    "code": 151
+                }]}))
+
+        return self._twitter_data.to_dicts(dm)
+
+    @fake_api('direct_messages/destroy.json')
+    def direct_messages_destroy(self, id, include_entities=None):
+        dm = self._dm_or_404(id)
+
+        if (dm.recipient_id_str != self._user_id_str and
+                dm.sender_id_str != self._user_id_str):
+            # The actual response given to us by Twitter
+            raise TwitterAPIError(403, "Forbidden", json.dumps({
+                "errors": [{
+                    "message": "There was an error sending your message: .",
+                    "code": 151
+                }]}))
+
+        del self._twitter_data.dms[dm.id_str]
+        return dm.to_dict(
+            self._twitter_data, include_entities=include_entities)
+
+    @fake_api('direct_messages/new.json')
+    def direct_messages_new(self, text, user_id=None, screen_name=None):
+        if user_id is None and screen_name is None:
+            raise TwitterAPIError(400, "Bad Request", json.dumps({
+                "errors": [{
+                    "message": (
+                        "Recipient (user, screen name, or id) "
+                        "parameter is missing."),
+                    "code": 38
+                }]}))
+
+        if user_id is None:
+            user = self._twitter_data.get_user_by_screen_name(screen_name)
+            user_id = user.id_str
+
+        dm = self._twitter_data.new_dm(text, self._user_id_str, user_id)
+        return dm.to_dict(self._twitter_data)
 
     # Friends & Followers
 
