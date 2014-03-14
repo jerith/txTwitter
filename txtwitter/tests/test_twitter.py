@@ -974,12 +974,6 @@ class TestTwitterClient(TestCase):
             'hello', screen_name='fakeuser2')
         self.assertEqual(resp, response_data)
 
-    # TODO: Tests for direct_messages()
-    # TODO: Tests for direct_messages_sent()
-    # TODO: Tests for direct_messages_show()
-    # TODO: Tests for direct_messages_destroy()
-    # TODO: Tests for direct_messages_new()
-
     # Friends & Followers
 
     # TODO: Tests for friendships_no_retweets_ids()
