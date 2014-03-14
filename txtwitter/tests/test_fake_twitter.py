@@ -18,30 +18,64 @@ class TestFakeTwitterHelpers(TestCase):
     _extract_user_mentions = from_fake_twitter('extract_user_mentions')
     _FakeTwitterData = from_fake_twitter('FakeTwitterData')
 
-    def test_extract_user_mentions(self):
+    def test_extract_user_mentions_none(self):
+        twitter = self._FakeTwitterData()
+        text = 'hello'
+        self.assertEqual([], self._extract_user_mentions(twitter, text))
+
+    def test_extract_user_mentions_not_user(self):
+        twitter = self._FakeTwitterData()
+        text = 'hello @notuser'
+        self.assertEqual([], self._extract_user_mentions(twitter, text))
+
+    def test_extract_user_mentions_one_user(self):
         twitter = self._FakeTwitterData()
         twitter.add_user('1', 'fakeuser', 'Fake User')
-        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
-
-        text = "hello @fakeuser and @fakeuser2"
+        text = 'hello @fakeuser'
         self.assertEqual(self._extract_user_mentions(twitter, text), [{
-            'id': 1,
             'id_str': '1',
+            'id': 1,
             'indices': [6, 15],
+            'screen_name': 'fakeuser',
             'name': 'Fake User',
-            'screen_name': 'fakeuser'
-        }, {
-            'id': 2,
-            'id_str': '2',
-            'indices': [20, 30],
-            'name': 'Fake User 2',
-            'screen_name': 'fakeuser2'
         }])
 
-    def test_extract_user_mentions_user_not_found(self):
+    def test_extract_user_mentions_two_users(self):
         twitter = self._FakeTwitterData()
-        text = "hello @fakeuser and @fakeuser2"
-        self.assertEqual(self._extract_user_mentions(twitter, text), [])
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        text = 'hello @fakeuser @fakeuser2'
+        self.assertEqual(self._extract_user_mentions(twitter, text), [{
+            'id_str': '1',
+            'id': 1,
+            'indices': [6, 15],
+            'screen_name': 'fakeuser',
+            'name': 'Fake User',
+        }, {
+            'id_str': '2',
+            'id': 2,
+            'indices': [16, 26],
+            'screen_name': 'fakeuser2',
+            'name': 'Fake User',
+        }])
+
+    def test_extract_user_mentions_one_user_twice(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        text = 'hello @fakeuser @fakeuser'
+        self.assertEqual(self._extract_user_mentions(twitter, text), [{
+            'id_str': '1',
+            'id': 1,
+            'indices': [6, 15],
+            'screen_name': 'fakeuser',
+            'name': 'Fake User',
+        }, {
+            'id_str': '1',
+            'id': 1,
+            'indices': [16, 25],
+            'screen_name': 'fakeuser',
+            'name': 'Fake User',
+        }])
 
 
 class TestFakeStream(TestCase):
@@ -56,7 +90,11 @@ class TestFakeStream(TestCase):
     def test_accepts_multiple_message_types(self):
         stream = self._FakeStream()
         stream.add_message_type('foo', lambda data: data.get('bar') == 'baz')
+        stream.add_message_type('ham', lambda data: data.get('eggs') == 'spam')
         self.assertTrue(stream.accepts('foo', {'bar': 'baz'}))
+        self.assertTrue(stream.accepts('ham', {'eggs': 'spam'}))
+        self.assertFalse(stream.accepts('ham', {'bar': 'baz'}))
+        self.assertFalse(stream.accepts('foo', {'eggs': 'spam'}))
 
     def test_accepts_data_mismatch(self):
         stream = self._FakeStream()
