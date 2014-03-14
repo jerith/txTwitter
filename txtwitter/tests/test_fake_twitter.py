@@ -14,6 +14,70 @@ def from_fake_twitter(name):
     return prop
 
 
+class TestFakeTwitterHelpers(TestCase):
+    _extract_user_mentions = from_fake_twitter('extract_user_mentions')
+    _FakeTwitterData = from_fake_twitter('FakeTwitterData')
+
+    def test_extract_user_mentions_none(self):
+        twitter = self._FakeTwitterData()
+        text = 'hello'
+        self.assertEqual([], self._extract_user_mentions(twitter, text))
+
+    def test_extract_user_mentions_not_user(self):
+        twitter = self._FakeTwitterData()
+        text = 'hello @notuser'
+        self.assertEqual([], self._extract_user_mentions(twitter, text))
+
+    def test_extract_user_mentions_one_user(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        text = 'hello @fakeuser'
+        self.assertEqual(self._extract_user_mentions(twitter, text), [{
+            'id_str': '1',
+            'id': 1,
+            'indices': [6, 15],
+            'screen_name': 'fakeuser',
+            'name': 'Fake User',
+        }])
+
+    def test_extract_user_mentions_two_users(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        text = 'hello @fakeuser @fakeuser2'
+        self.assertEqual(self._extract_user_mentions(twitter, text), [{
+            'id_str': '1',
+            'id': 1,
+            'indices': [6, 15],
+            'screen_name': 'fakeuser',
+            'name': 'Fake User',
+        }, {
+            'id_str': '2',
+            'id': 2,
+            'indices': [16, 26],
+            'screen_name': 'fakeuser2',
+            'name': 'Fake User',
+        }])
+
+    def test_extract_user_mentions_one_user_twice(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        text = 'hello @fakeuser @fakeuser'
+        self.assertEqual(self._extract_user_mentions(twitter, text), [{
+            'id_str': '1',
+            'id': 1,
+            'indices': [6, 15],
+            'screen_name': 'fakeuser',
+            'name': 'Fake User',
+        }, {
+            'id_str': '1',
+            'id': 1,
+            'indices': [16, 25],
+            'screen_name': 'fakeuser',
+            'name': 'Fake User',
+        }])
+
+
 class TestFakeStream(TestCase):
     _FakeStream = from_fake_twitter('FakeStream')
 
