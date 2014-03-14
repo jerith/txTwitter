@@ -862,6 +862,48 @@ class TestTwitterClient(TestCase):
         resp = yield client.direct_messages_show('1')
         self.assertEqual(resp, response_data[0])
 
+    def test_direct_messages_show_not_found(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/show.json'
+
+        err_dict = {
+            "errors": [{
+                "message": "Sorry, that page does not exist",
+                "code": 34,
+            }]
+        }
+
+        agent.add_expected_request(
+            'GET', uri, {'id': '1'}, self._resp_json(err_dict, 404))
+
+        d = client.direct_messages_show(1)
+        d.addErrback(lambda f: f.value)
+        err = yield d
+
+        code, _phrase, body = err.args
+        self.assertEqual((404, err_dict), (code, json.loads(body)))
+
+    def test_direct_messages_show_forbidden(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/show.json'
+
+        err_dict = {
+            "errors": [{
+                "message": "There was an error sending your message: .",
+                "code": 151
+            }]
+        }
+
+        agent.add_expected_request(
+            'GET', uri, {'id': '1'}, self._resp_json(err_dict, 403))
+
+        d = client.direct_messages_show(1)
+        d.addErrback(lambda f: f.value)
+        err = yield d
+
+        code, _phrase, body = err.args
+        self.assertEqual((403, err_dict), (code, json.loads(body)))
+
     @inlineCallbacks
     def test_direct_messages_destroy(self):
         agent, client = self._agent_and_TwitterClient()
@@ -914,6 +956,48 @@ class TestTwitterClient(TestCase):
         resp = yield client.direct_messages_destroy(
             '1', include_entities=False)
         self.assertEqual(resp, response_data)
+
+    def test_direct_messages_destroy_not_found(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/destroy.json'
+
+        err_dict = {
+            "errors": [{
+                "message": "Sorry, that page does not exist",
+                "code": 34,
+            }]
+        }
+
+        agent.add_expected_request(
+            'GET', uri, {'id': '1'}, self._resp_json(err_dict, 404))
+
+        d = client.direct_messages_destroy(1)
+        d.addErrback(lambda f: f.value)
+        err = yield d
+
+        code, _phrase, body = err.args
+        self.assertEqual((404, err_dict), (code, json.loads(body)))
+
+    def test_direct_messages_destroy_forbidden(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/destroy.json'
+
+        err_dict = {
+            "errors": [{
+                "message": "There was an error sending your message: .",
+                "code": 151
+            }]
+        }
+
+        agent.add_expected_request(
+            'GET', uri, {'id': '1'}, self._resp_json(err_dict, 403))
+
+        d = client.direct_messages_destroy(1)
+        d.addErrback(lambda f: f.value)
+        err = yield d
+
+        code, _phrase, body = err.args
+        self.assertEqual((403, err_dict), (code, json.loads(body)))
 
     @inlineCallbacks
     def test_direct_messages_new_by_user_id(self):
@@ -973,6 +1057,29 @@ class TestTwitterClient(TestCase):
         resp = yield client.direct_messages_new(
             'hello', screen_name='fakeuser2')
         self.assertEqual(resp, response_data)
+
+    def test_direct_messages_new_bad_request(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/direct_messages/new.json'
+
+        err_dict = {
+            "errors": [{
+                "message": (
+                    "Recipient (user, screen name, or id) "
+                    "parameter is missing."),
+                "code": 38
+            }]
+        }
+
+        agent.add_expected_request(
+            'GET', uri, {'id': '1'}, self._resp_json(err_dict, 400))
+
+        d = client.direct_messages_new('hello')
+        d.addErrback(lambda f: f.value)
+        err = yield d
+
+        code, _phrase, body = err.args
+        self.assertEqual((403, err_dict), (code, json.loads(body)))
 
     # Friends & Followers
 
