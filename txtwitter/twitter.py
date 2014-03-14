@@ -677,8 +677,151 @@ class TwitterClient(object):
 
     # Direct Messages
 
-    # TODO: Implement direct_messages()
-    # TODO: Implement direct_messages_sent()
+    def direct_messages(self, since_id=None, max_id=None, count=None,
+                        include_entities=None, skip_status=None):
+        """
+        Gets the 20 most recent direct messages received by the authenticating
+        user.
+
+        https://dev.twitter.com/docs/api/1.1/get/direct_messages
+
+        :param str since_id:
+            Returns results with an ID greater than (that is, more recent than)
+            the specified ID. There are limits to the number of Tweets which
+            can be accessed through the API. If the limit of Tweets has occured
+            since the since_id, the since_id will be forced to the oldest ID
+            available.
+
+        :params str max_id:
+            Returns results with an ID less than (that is, older than) or equal
+            to the specified ID.
+
+        :param int count:
+            Specifies the number of direct messages to try and retrieve, up to
+            a maximum of ``200``. The value of count is best thought of as a
+            limit to the number of Tweets to return because suspended or
+            deleted content is removed after the count has been applied.
+
+        :param bool include_entities:
+            The entities node will not be included when set to ``False``.
+
+        :param bool skip_status:
+            When set to ``True``, statuses will not be included in the returned
+            user objects.
+
+        :returns:
+            A list of direct message dicts.
+        """
+        params = {}
+        set_str_param(params, 'since_id', since_id)
+        set_str_param(params, 'max_id', max_id)
+        set_int_param(params, 'count', count)
+        set_bool_param(params, 'include_entities', include_entities)
+        set_bool_param(params, 'skip_status', skip_status)
+        return self._get_api('direct_messages.json', params)
+
+    def direct_messages_sent(self, since_id=None, max_id=None, count=None,
+                             include_entities=None, page=None):
+        """
+        Gets the 20 most recent direct messages sent by the authenticating
+        user.
+
+        https://dev.twitter.com/docs/api/1.1/get/direct_messages/sent
+
+        :param str since_id:
+            Returns results with an ID greater than (that is, more recent than)
+            the specified ID. There are limits to the number of Tweets which
+            can be accessed through the API. If the limit of Tweets has occured
+            since the since_id, the since_id will be forced to the oldest ID
+            available.
+
+        :params str max_id:
+            Returns results with an ID less than (that is, older than) or equal
+            to the specified ID.
+
+        :param int count:
+            Returns results with an ID less than (that is, older than) or equal
+            to the specified ID.
+
+        :param int page:
+            Specifies the page of results to retrieve.
+
+        :param bool include_entities:
+            The entities node will not be included when set to ``False``.
+
+        :returns:
+            A list of direct message dicts.
+        """
+        params = {}
+        set_str_param(params, 'since_id', since_id)
+        set_str_param(params, 'max_id', max_id)
+        set_int_param(params, 'count', count)
+        set_int_param(params, 'page', page)
+        set_bool_param(params, 'include_entities', include_entities)
+        return self._get_api('direct_messages/sent.json', params)
+
+    def direct_messages_show(self, id):
+        """
+        Gets the direct message with the given id.
+
+        https://dev.twitter.com/docs/api/1.1/get/direct_messages/show
+
+        :param str id:
+            (*required*) The ID of the direct message.
+
+        :returns:
+            A direct message dict.
+        """
+        params = {}
+        set_str_param(params, 'id', id)
+        d = self._get_api('direct_messages/show.json', params)
+        d.addCallback(lambda dms: dms[0])
+        return d
+
+    def direct_messages_destroy(self, id, include_entities=None):
+        """
+        Destroys the direct message with the given id.
+
+        https://dev.twitter.com/docs/api/1.1/post/direct_messages/destroy
+
+        :param str id:
+            (*required*) The ID of the direct message.
+        :param bool include_entities:
+            The entities node will not be included when set to ``False``.
+
+        :returns:
+            A direct message dict containing the destroyed direct message.
+        """
+        params = {}
+        set_str_param(params, 'id', id)
+        set_bool_param(params, 'include_entities', include_entities)
+        return self._post_api('direct_messages/destroy.json', params)
+
+    def direct_messages_new(self, text, user_id=None, screen_name=None):
+        """
+        Sends a new direct message to the given user from the authenticating
+        user.
+
+        https://dev.twitter.com/docs/api/1.1/post/direct_messages/new
+
+        :param str text:
+            (*required*) The text of your direct message.
+        :param str user_id:
+            The ID of the user who should receive the direct message. Required
+            if ``screen_name`` isn't given.
+        :param str screen_name:
+            The screen name of the user who should receive the direct message.
+            Required if ``user_id`` isn't given.
+
+        :returns:
+            A direct message dict containing the sent direct message.
+        """
+        params = {}
+        set_str_param(params, 'text', text)
+        set_str_param(params, 'user_id', user_id)
+        set_str_param(params, 'screen_name', screen_name)
+        return self._post_api('direct_messages/new.json', params)
+
     # TODO: Implement direct_messages_show()
     # TODO: Implement direct_messages_destroy()
     # TODO: Implement direct_messages_new()
