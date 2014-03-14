@@ -16,10 +16,6 @@ from txtwitter.twitter import (
 USER_MENTION_RE = re.compile(r'@[a-zA-Z0-9_]+')
 
 
-def now():
-    return datetime.utcnow()
-
-
 def mention_from_match(twitter_data, match):
     user = twitter_data.get_user_by_screen_name(match.group(0)[1:])
 
@@ -74,7 +70,7 @@ class FakeTweet(object):
         self.text = text
         self.user_id_str = user_id_str
         self.reply_to = reply_to
-        self.created_at = kw.pop('created_at', now())
+        self.created_at = kw.pop('created_at', datetime.utcnow())
         self.kw = kw
 
     def __cmp__(self, other):
@@ -170,7 +166,7 @@ class FakeDM(object):
         self.text = text
         self.sender_id_str = sender_id_str
         self.recipient_id_str = recipient_id_str
-        self.created_at = kw.pop('created_at', now())
+        self.created_at = kw.pop('created_at', datetime.utcnow())
         self.kw = kw
 
     def __cmp__(self, other):
@@ -226,7 +222,7 @@ class FakeUser(object):
         self.id_str = id_str
         self.screen_name = screen_name
         self.name = name
-        self.created_at = kw.pop('created_at', now())
+        self.created_at = kw.pop('created_at', datetime.utcnow())
         self.kw = kw
 
     def to_dict(self, twitter_data):
@@ -523,7 +519,7 @@ class FakeTwitterAPI(object):
             self._twitter_data.iter_tweets_from(user_id), count, since_id,
             max_id)
         if exclude_replies:
-            tweets = [tweet for tweet in tweets if tweet.reply_to is not None]
+            tweets = [tweet for tweet in tweets if tweet.reply_to is None]
         if include_rts is not None:
             raise NotImplementedError("exclude_rts param")
         return [
@@ -597,8 +593,10 @@ class FakeTwitterAPI(object):
             for term in track.split(','):
                 track_res.append(re.compile(r'\b%s\b' % (re.escape(term),)))
 
+        follow = [] if follow is None else follow.split(',')
+
         def stream_filter_predicate(tweet):
-            for user_id_str in (follow or []):
+            for user_id_str in follow:
                 if tweet.user_id_str == user_id_str:
                     return True
             for track_re in track_res:

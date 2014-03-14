@@ -125,6 +125,7 @@ class TestFakeStream(TestCase):
 class TestFakeTweet(TestCase):
     _FakeTwitterData = from_fake_twitter('FakeTwitterData')
     _FakeTweet = from_fake_twitter('FakeTweet')
+    _now = datetime(2014, 3, 11, 10, 48, 22, 687699)
 
     def test__get_reply_to_status_details_nonreply(self):
         twitter = self._FakeTwitterData()
@@ -178,21 +179,75 @@ class TestFakeTweet(TestCase):
             'in_reply_to_user_id_str': '1'
         })
 
+    def test_to_dict(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user(
+            '1', 'fakeuser', 'Fake User', created_at=self._now)
+        twitter.add_user(
+            '2', 'fakeuser2', 'Fake User 2', created_at=self._now)
+        tweet = twitter.add_tweet(
+            '1', 'hello @fakeuser2', '1', created_at=self._now)
+
+        self.assertEqual(tweet.to_dict(twitter), {
+            'created_at': '2014-03-11 10:48:22.687699',
+            'entities': {
+                'user_mentions': [{
+                    'id': 2,
+                    'id_str': '2',
+                    'indices': [6, 16],
+                    'name': 'Fake User 2',
+                    'screen_name': 'fakeuser2'
+                }]
+            },
+            'favorite_count': 0,
+            'favorited': False,
+            'filter_level': 'medium',
+            'id': 1,
+            'id_str': '1',
+            'retweet_count': 0,
+            'retweeted': False,
+            'source': 'web',
+            'text': 'hello @fakeuser2',
+            'user': {
+                'created_at': '2014-03-11 10:48:22.687699',
+                'id': 1,
+                'id_str': '1',
+                'name': 'Fake User',
+                'screen_name': 'fakeuser'
+            }
+        })
+
+    def test_to_dict_trim_user(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        tweet = twitter.add_tweet('1', 'hello', '1')
+        tweet_dict = tweet.to_dict(twitter, trim_user=True)
+        self.assertEqual(tweet_dict['user'], {
+            'id_str': '1',
+            'id': 1
+        })
+
+    def test_to_dict_not_include_entities(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        tweet = twitter.add_tweet('1', 'hello', '1')
+        tweet_dict = tweet.to_dict(twitter, include_entities=False)
+        self.assertTrue('entities' not in tweet_dict)
+
 
 class TestFakeDM(TestCase):
     _FakeTwitterData = from_fake_twitter('FakeTwitterData')
     _FakeDM = from_fake_twitter('FakeDM')
     _now = datetime(2014, 3, 11, 10, 48, 22, 687699)
 
-    def setUp(self):
-        from txtwitter.tests import fake_twitter
-        self.patch(fake_twitter, 'now', lambda: self._now)
-
     def test__get_sender_details(self):
         twitter = self._FakeTwitterData()
-        twitter.add_user('1', 'fakeuser', 'Fake User')
-        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
-        dm = twitter.add_dm('1', 'hello', '1', '2')
+        twitter.add_user(
+            '1', 'fakeuser', 'Fake User', created_at=self._now)
+        twitter.add_user(
+            '2', 'fakeuser2', 'Fake User 2', created_at=self._now)
+        dm = twitter.add_dm(
+            '1', 'hello', '1', '2', created_at=self._now)
 
         self.assertEqual(dm._get_sender_details(twitter), {
             'sender': {
@@ -209,9 +264,12 @@ class TestFakeDM(TestCase):
 
     def test__get_recipient_details(self):
         twitter = self._FakeTwitterData()
-        twitter.add_user('1', 'fakeuser', 'Fake User')
-        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
-        dm = twitter.add_dm('1', 'hello', '1', '2')
+        twitter.add_user(
+            '1', 'fakeuser', 'Fake User', created_at=self._now)
+        twitter.add_user(
+            '2', 'fakeuser2', 'Fake User 2', created_at=self._now)
+        dm = twitter.add_dm(
+            '1', 'hello', '1', '2', created_at=self._now)
 
         self.assertEqual(dm._get_recipient_details(twitter), {
             'recipient': {
@@ -228,9 +286,12 @@ class TestFakeDM(TestCase):
 
     def test_to_dict(self):
         twitter = self._FakeTwitterData()
-        twitter.add_user('1', 'fakeuser', 'Fake User')
-        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
-        dm = twitter.add_dm('1', 'hello @fakeuser2', '1', '2')
+        twitter.add_user(
+            '1', 'fakeuser', 'Fake User', created_at=self._now)
+        twitter.add_user(
+            '2', 'fakeuser2', 'Fake User 2', created_at=self._now)
+        dm = twitter.add_dm(
+            '1', 'hello @fakeuser2', '1', '2', created_at=self._now)
 
         self.assertEqual(dm.to_dict(twitter), {
             'created_at': '2014-03-11 10:48:22.687699',
@@ -275,6 +336,86 @@ class TestFakeDM(TestCase):
         dm = twitter.add_dm('1', 'hello @fakeuser2', '1', '2')
         dm_dict = dm.to_dict(twitter, include_entities=False)
         self.assertTrue('entities' not in dm_dict)
+
+
+class TestFakeTwitterData(TestCase):
+    _FakeTwitterData = from_fake_twitter('FakeTwitterData')
+
+    def test_next_tweet_id(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+
+        id1 = twitter.next_tweet_id
+        tweet1 = twitter.new_tweet('hello', '1')
+
+        self.assertEqual(id1, tweet1.id_str)
+
+    def test_next_dm_id(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser', 'Fake User')
+
+        id1 = twitter.next_tweet_id
+        dm1 = twitter.new_dm('hello', '1', '2')
+
+        self.assertEqual(id1, dm1.id_str)
+
+    def test_next_user_id(self):
+        twitter = self._FakeTwitterData()
+
+        id1 = twitter.next_tweet_id
+        user1 = twitter.new_user('fakeuser', 'Fake User')
+
+        self.assertEqual(id1, user1.id_str)
+
+    def test_del_tweet(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        tweet1 = twitter.add_tweet('1', 'hello', '1')
+
+        self.assertEqual(twitter.get_tweet('1'), tweet1)
+        twitter.del_tweet('1')
+        self.assertEqual(twitter.get_tweet('1'), None)
+
+    def test_del_dm(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+        dm1 = twitter.add_dm('1', 'hello', '1', '2')
+
+        self.assertEqual(twitter.get_dm('1'), dm1)
+        twitter.del_dm('1')
+        self.assertEqual(twitter.get_dm('1'), None)
+
+    def test_user_dm(self):
+        twitter = self._FakeTwitterData()
+        user1 = twitter.add_user('1', 'fakeuser', 'Fake User')
+
+        self.assertEqual(twitter.get_user('1'), user1)
+        twitter.del_user('1')
+        self.assertEqual(twitter.get_user('1'), None)
+
+    def test_new_tweet(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        tweet = twitter.new_tweet('hello', '1')
+        self.assertEqual(tweet.text, 'hello')
+        self.assertEqual(tweet.user_id_str, '1')
+
+    def test_new_dm(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+        dm = twitter.new_dm('hello', '1', '2')
+        self.assertEqual(dm.text, 'hello')
+        self.assertEqual(dm.sender_id_str, '1')
+        self.assertEqual(dm.recipient_id_str, '2')
+
+    def test_new_user(self):
+        twitter = self._FakeTwitterData()
+        user = twitter.new_user('fakeuser', 'Fake User')
+        self.assertEqual(user.screen_name, 'fakeuser')
+        self.assertEqual(user.name, 'Fake User')
 
 
 class TestFakeTwitter(TestCase):
@@ -348,6 +489,23 @@ class TestFakeTwitterAPI(TestCase):
     def assert_api_method_uri(self, method_name, uri_path):
         self.assert_method_uri(method_name, self._api_uri(uri_path))
 
+    def test__tweet_or_404(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        tweet = twitter.add_tweet('1', 'hello', '1')
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        self.assertEqual(api._tweet_or_404('1'), tweet)
+        self.assertRaises(self._TwitterAPIError, api._tweet_or_404, '2')
+
+    def test__user_or_404(self):
+        twitter = self._FakeTwitterData()
+        user = twitter.add_user('1', 'fakeuser', 'Fake User')
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        self.assertEqual(api._user_or_404('1'), user)
+        self.assertRaises(self._TwitterAPIError, api._user_or_404, '2')
+
     def test__dm_or_404(self):
         twitter = self._FakeTwitterData()
         api = self._FakeTwitterAPI(twitter, '1')
@@ -378,6 +536,48 @@ class TestFakeTwitterAPI(TestCase):
         mentions = api.statuses_mentions_timeline()
         self.assertEqual(mentions, twitter.to_dicts(mention2, mention1))
 
+    def test_statuses_mentions_timeline_since_id(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+
+        twitter.add_tweet('1', 'hello @fakeuser', '2')
+        mention2 = twitter.add_tweet('2', 'hello @fakeuser', '2')
+        mention3 = twitter.add_tweet('3', 'hello @fakeuser', '2')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        mentions = api.statuses_mentions_timeline(since_id='1')
+        self.assertEqual(mentions, twitter.to_dicts(mention3, mention2))
+
+    def test_statuses_mentions_timeline_max_id(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+
+        mention1 = twitter.add_tweet('1', 'hello @fakeuser', '2')
+        mention2 = twitter.add_tweet('2', 'hello @fakeuser', '2')
+        twitter.add_tweet('3', 'hello @fakeuser', '2')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        mentions = api.statuses_mentions_timeline(max_id='2')
+        self.assertEqual(mentions, twitter.to_dicts(mention2, mention1))
+
+    def test_statuses_mentions_timeline_limit(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+
+        mentions = [
+            twitter.add_tweet(str(i), 'hello @fakeuser', '2')
+            for i in range(201)]
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        mention_dicts = api.statuses_mentions_timeline(count=201)
+
+        self.assertEqual(
+            mention_dicts,
+            twitter.to_dicts(*mentions[::-1][:200]))
+
     # TODO: More tests for fake statuses_mentions_timeline()
 
     def test_dispatch_statuses_user_timeline(self):
@@ -396,6 +596,71 @@ class TestFakeTwitterAPI(TestCase):
         api = self._FakeTwitterAPI(twitter, '1')
         mentions = api.statuses_user_timeline('2')
         self.assertEqual(mentions, twitter.to_dicts(tweet2, tweet1))
+
+    def test_statuses_user_timeline_limit_by_screen_name(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        twitter.add_tweet('1', 'hello', '1')
+        tweet1 = twitter.add_tweet('2', 'hello', '2')
+        twitter.add_tweet('3', 'hello @fakeuser2', '1')
+        tweet2 = twitter.add_tweet('4', 'hello @fakeuser', '2')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        mentions = api.statuses_user_timeline(screen_name='fakeuser2')
+        self.assertEqual(mentions, twitter.to_dicts(tweet2, tweet1))
+
+    def test_statuses_user_timeline_limit_by_exclude_replies(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        twitter.add_tweet('1', 'hello', '1')
+        tweet1 = twitter.add_tweet('2', 'hello', '2')
+        twitter.add_tweet('3', 'hello @fakeuser2', '1')
+        twitter.add_tweet('4', 'hello @fakeuser', '2', reply_to='3')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        mentions = api.statuses_user_timeline('2', exclude_replies=True)
+        self.assertEqual(mentions, twitter.to_dicts(tweet1))
+
+    def test_statuses_user_timeline_since_id(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+
+        twitter.add_tweet('1', 'hello @fakeuser', '2')
+        tweet2 = twitter.add_tweet('2', 'hello @fakeuser', '2')
+        tweet3 = twitter.add_tweet('3', 'hello @fakeuser', '2')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        mentions = api.statuses_user_timeline('2', since_id='1')
+        self.assertEqual(mentions, twitter.to_dicts(tweet3, tweet2))
+
+    def test_statuses_user_timeline_max_id(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+
+        tweet1 = twitter.add_tweet('1', 'hello @fakeuser', '2')
+        tweet2 = twitter.add_tweet('2', 'hello @fakeuser', '2')
+        twitter.add_tweet('3', 'hello @fakeuser', '2')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        mentions = api.statuses_user_timeline('2', max_id='2')
+        self.assertEqual(mentions, twitter.to_dicts(tweet2, tweet1))
+
+    def test_statuses_user_timeline_limit(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+
+        tweets = [
+            twitter.add_tweet(str(i), 'hello @fakeuser', '2')
+            for i in range(201)]
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        mention_dicts = api.statuses_user_timeline('2', count=201)
+        self.assertEqual(mention_dicts, twitter.to_dicts(*tweets[::-1][:200]))
 
     # TODO: More tests for fake statuses_user_timeline()
 
@@ -494,7 +759,27 @@ class TestFakeTwitterAPI(TestCase):
         resp.finished()
         self.assertEqual(twitter.streams, {})
 
-    # TODO: More tests for fake stream_filter()
+    def test_stream_filter_follow(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        twitter.add_user('3', 'fakeuser2', 'Fake User')
+
+        api = self._FakeTwitterAPI(twitter, None)
+        messages = []
+        resp = api.stream_filter(follow='2,3')
+        self._process_stream_response(resp, messages.append)
+        self.assertEqual(messages, [])
+
+        twitter.new_tweet('hello', '1')
+        self.assertEqual(messages, [])
+
+        tweet1 = twitter.new_tweet('hello', '2')
+        tweet2 = twitter.new_tweet('hello', '3')
+        self.assertEqual(messages, twitter.to_dicts(tweet1, tweet2))
+
+        resp.finished()
+        self.assertEqual(twitter.streams, {})
 
     # TODO: Tests for fake stream_sample()
     # TODO: Tests for fake stream_firehose()
