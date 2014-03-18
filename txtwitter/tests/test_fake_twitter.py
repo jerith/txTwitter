@@ -853,8 +853,11 @@ class TestFakeTwitterAPI(TestCase):
 
         dm1 = twitter.new_dm('hello', '1', '2')
         dm2 = twitter.new_dm('hello', '2', '1')
+
         twitter.new_dm('hello', '2', '3')
-        self.assertEqual(messages, twitter.to_dicts(dm1, dm2))
+        self.assertEqual(
+            messages,
+            [{'direct_message': dm} for dm in twitter.to_dicts(dm1, dm2)])
 
         resp.finished()
         self.assertEqual(twitter.streams, {})

@@ -273,7 +273,7 @@ class FakeTwitterData(object):
     def broadcast_dm(self, dm):
         for stream in self.streams.itervalues():
             if stream.accepts('dm', dm):
-                stream.deliver(dm.to_dict(self))
+                stream.deliver({'direct_message': dm.to_dict(self)})
 
     def new_stream(self):
         stream = FakeStream()
