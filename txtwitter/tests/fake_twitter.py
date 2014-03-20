@@ -309,13 +309,15 @@ class FakeTwitterData(object):
             if stream.accepts('dm', dm):
                 stream.deliver({'direct_message': dm.to_dict(self)})
 
-    def broadcast_follow(self, source_id, target_id):
-        pass
-        # TODO
+    def broadcast_follow(self, follow):
+        for stream in self.streams.itervalues():
+            if stream.accepts('follow', follow):
+                stream.deliver(follow.to_dict(self, event='follow'))
 
-    def broadcast_unfollow(self, source_id, target_id):
-        pass
-        # TODO
+    def broadcast_unfollow(self, follow):
+        for stream in self.streams.itervalues():
+            if stream.accepts('unfollow', follow):
+                stream.deliver(follow.to_dict(self, event='unfollow'))
 
     def new_stream(self):
         stream = FakeStream()
@@ -361,7 +363,7 @@ class FakeTwitterData(object):
 
         if key not in self.follows:
             follow = self.follows[key] = FakeFollow(source_id, target_id)
-            self.broadcast_follow(source_id, target_id)
+            self.broadcast_follow(follow)
         else:
             follow = self.follows[key]
 
@@ -380,8 +382,9 @@ class FakeTwitterData(object):
         key = (source_id, target_id)
 
         if key in self.follows:
+            follow = self.follows[key]
             del self.follows[key]
-            self.broadcast_unfollow(source_id, target_id)
+            self.broadcast_unfollow(follow)
 
     def new_tweet(self, text, user_id_str, *args, **kw):
         tweet = self.add_tweet(

@@ -372,6 +372,7 @@ class TestFakeFollow(TestCase):
 
 class TestFakeTwitterData(TestCase):
     _FakeTwitterData = from_fake_twitter('FakeTwitterData')
+    _now = datetime(2014, 3, 11, 10, 48, 22, 687699)
 
     def test_next_tweet_id(self):
         twitter = self._FakeTwitterData()
@@ -400,6 +401,94 @@ class TestFakeTwitterData(TestCase):
 
         self.assertEqual(id1, user1.id_str)
 
+    def test_broadcast_follow(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User', created_at=self._now)
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2', created_at=self._now)
+        follow1 = twitter.add_follow('1', '2')
+        follow2 = twitter.add_follow('2', '1')
+        follow1_dict = follow1.to_dict(twitter, event='follow')
+        follow2_dict = follow2.to_dict(twitter, event='follow')
+
+        stream1_messages = []
+        stream1 = twitter.new_stream()
+        stream1.add_message_type('follow', lambda f: f.source_id == '1')
+        protocol = FakeTwitterStreamProtocol(stream1_messages.append)
+        stream1.resp.deliverBody(protocol)
+
+        stream2_messages = []
+        stream2 = twitter.new_stream()
+        stream2.add_message_type('follow', lambda f: f.source_id == '2')
+        protocol = FakeTwitterStreamProtocol(stream2_messages.append)
+        stream2.resp.deliverBody(protocol)
+
+        twitter.broadcast_follow(follow1)
+        self.assertEqual(stream1_messages, [follow1_dict])
+        self.assertEqual(stream2_messages, [])
+
+        twitter.broadcast_follow(follow2)
+        self.assertEqual(stream1_messages, [follow1_dict])
+        self.assertEqual(stream2_messages, [follow2_dict])
+
+    def test_broadcast_unfollow(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User', created_at=self._now)
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2', created_at=self._now)
+        follow1 = twitter.add_follow('1', '2')
+        follow2 = twitter.add_follow('2', '1')
+        follow1_dict = follow1.to_dict(twitter, event='unfollow')
+        follow2_dict = follow2.to_dict(twitter, event='unfollow')
+
+        stream1_messages = []
+        stream1 = twitter.new_stream()
+        stream1.add_message_type('unfollow', lambda f: f.source_id == '1')
+        protocol = FakeTwitterStreamProtocol(stream1_messages.append)
+        stream1.resp.deliverBody(protocol)
+
+        stream2_messages = []
+        stream2 = twitter.new_stream()
+        stream2.add_message_type('unfollow', lambda f: f.source_id == '2')
+        protocol = FakeTwitterStreamProtocol(stream2_messages.append)
+        stream2.resp.deliverBody(protocol)
+
+        twitter.broadcast_unfollow(follow1)
+        self.assertEqual(stream1_messages, [follow1_dict])
+        self.assertEqual(stream2_messages, [])
+
+        twitter.broadcast_unfollow(follow2)
+        self.assertEqual(stream1_messages, [follow1_dict])
+        self.assertEqual(stream2_messages, [follow2_dict])
+
+    def test_add_follow(self):
+        twitter = self._FakeTwitterData()
+        self.assertEqual(twitter.follows, {})
+
+        twitter.add_follow('1', '2')
+        follow1 = twitter.follows[('1', '2')]
+        self.assertEqual(follow1.source_id, '1')
+        self.assertEqual(follow1.target_id, '2')
+
+        twitter.add_follow('2', '1')
+        follow2 = twitter.follows[('2', '1')]
+        self.assertEqual(follow2.source_id, '2')
+        self.assertEqual(follow2.target_id, '1')
+
+    def test_add_follow_broadcast(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+
+        def predicate(f):
+            follows.append(f)
+            return True
+
+        follows = []
+        stream = twitter.new_stream()
+        stream.add_message_type('follow', predicate)
+
+        follow = twitter.add_follow('1', '2')
+        self.assertEqual(follows, [follow])
+
     def test_del_tweet(self):
         twitter = self._FakeTwitterData()
         twitter.add_user('1', 'fakeuser', 'Fake User')
@@ -418,6 +507,38 @@ class TestFakeTwitterData(TestCase):
         self.assertEqual(twitter.get_dm('1'), dm1)
         twitter.del_dm('1')
         self.assertEqual(twitter.get_dm('1'), None)
+
+    def test_del_follow(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_follow('1', '2')
+        twitter.add_follow('2', '1')
+        self.assertTrue(('1', '2') in twitter.follows)
+        self.assertTrue(('2', '1') in twitter.follows)
+
+        twitter.del_follow('1', '2')
+        self.assertTrue(('1', '2') not in twitter.follows)
+        self.assertTrue(('2', '1') in twitter.follows)
+
+        twitter.del_follow('2', '1')
+        self.assertTrue(('1', '2') not in twitter.follows)
+        self.assertTrue(('2', '1') not in twitter.follows)
+
+    def test_del_follow_broadcast(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+        follow = twitter.add_follow('1', '2')
+
+        def predicate(f):
+            follows.append(f)
+            return True
+
+        follows = []
+        stream = twitter.new_stream()
+        stream.add_message_type('unfollow', predicate)
+
+        twitter.del_follow('1', '2')
+        self.assertEqual(follows, [follow])
 
     def test_user_dm(self):
         twitter = self._FakeTwitterData()
@@ -448,35 +569,6 @@ class TestFakeTwitterData(TestCase):
         user = twitter.new_user('fakeuser', 'Fake User')
         self.assertEqual(user.screen_name, 'fakeuser')
         self.assertEqual(user.name, 'Fake User')
-
-    def test_add_follow(self):
-        twitter = self._FakeTwitterData()
-        self.assertEqual(twitter.follows, {})
-
-        twitter.add_follow('1', '2')
-        follow1 = twitter.follows[('1', '2')]
-        self.assertEqual(follow1.source_id, '1')
-        self.assertEqual(follow1.target_id, '2')
-
-        twitter.add_follow('2', '1')
-        follow2 = twitter.follows[('2', '1')]
-        self.assertEqual(follow2.source_id, '2')
-        self.assertEqual(follow2.target_id, '1')
-
-    def test_del_follow(self):
-        twitter = self._FakeTwitterData()
-        twitter.add_follow('1', '2')
-        twitter.add_follow('2', '1')
-        self.assertTrue(('1', '2') in twitter.follows)
-        self.assertTrue(('2', '1') in twitter.follows)
-
-        twitter.del_follow('1', '2')
-        self.assertTrue(('1', '2') not in twitter.follows)
-        self.assertTrue(('2', '1') in twitter.follows)
-
-        twitter.del_follow('2', '1')
-        self.assertTrue(('1', '2') not in twitter.follows)
-        self.assertTrue(('2', '1') not in twitter.follows)
 
 
 class TestFakeTwitter(TestCase):
