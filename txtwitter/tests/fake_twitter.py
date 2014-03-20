@@ -218,11 +218,16 @@ class FakeDM(object):
 
 
 class FakeUser(object):
-    def __init__(self, id_str, screen_name, name, **kw):
+    def __init__(self, id_str, screen_name, name, follower_ids=None, **kw):
         self.id_str = id_str
         self.screen_name = screen_name
         self.name = name
         self.created_at = kw.pop('created_at', datetime.utcnow())
+
+        if follower_ids is None:
+            follower_ids = []
+        self.follower_ids = follower_ids
+
         self.kw = kw
 
     def to_dict(self, twitter_data):
@@ -274,6 +279,28 @@ class FakeTwitterData(object):
         for stream in self.streams.itervalues():
             if stream.accepts('dm', dm):
                 stream.deliver({'direct_message': dm.to_dict(self)})
+
+    def broadcast_follow(self, source_id, target_id):
+        pass
+        # TODO
+
+    def broadcast_unfollow(self, source_id, target_id):
+        pass
+        # TODO
+
+    def follow(self, source_id, target_id):
+        source = self.get_user(source_id)
+
+        if target_id not in source.follower_ids:
+            source.follower_ids.append(target_id)
+            self.broadcast_unfollow(source_id, target_id)
+
+    def unfollow(self, source_id, target_id):
+        source = self.get_user(source_id)
+
+        if target_id in source.follower_ids:
+            source.follower_ids.remove(target_id)
+            self.broadcast_unfollow(source_id, target_id)
 
     def new_stream(self):
         stream = FakeStream()
