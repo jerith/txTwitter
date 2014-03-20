@@ -338,6 +338,38 @@ class TestFakeDM(TestCase):
         self.assertTrue('entities' not in dm_dict)
 
 
+class TestFakeFollow(TestCase):
+    _FakeTwitterData = from_fake_twitter('FakeTwitterData')
+    _FakeFollow = from_fake_twitter('FakeFollow')
+    _now = datetime(2014, 3, 11, 10, 48, 22, 687699)
+
+    def test_to_dict(self):
+        twitter = self._FakeTwitterData()
+
+        user1 = twitter.add_user(
+            '1', 'fakeuser', 'Fake User', created_at=self._now)
+        user2 = twitter.add_user(
+            '2', 'fakeuser2', 'Fake User 2', created_at=self._now)
+        follow = twitter.add_follow('1', '2')
+
+        self.assertEqual(follow.to_dict(twitter), {
+            'source': user1.to_dict(twitter),
+            'target': user2.to_dict(twitter)
+        })
+
+    def test_to_dict_event(self):
+        twitter = self._FakeTwitterData()
+
+        twitter.add_user(
+            '1', 'fakeuser', 'Fake User', created_at=self._now)
+        twitter.add_user(
+            '2', 'fakeuser2', 'Fake User 2', created_at=self._now)
+        follow = twitter.add_follow('1', '2')
+
+        follow_dict = follow.to_dict(twitter, event='follow')
+        self.assertEqual(follow_dict['event'], 'follow')
+
+
 class TestFakeTwitterData(TestCase):
     _FakeTwitterData = from_fake_twitter('FakeTwitterData')
 

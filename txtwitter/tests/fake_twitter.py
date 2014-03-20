@@ -255,12 +255,20 @@ class FakeFollow(object):
         self.created_at = kw.pop('created_at', datetime.utcnow())
         self.kw = kw
 
-    def to_event_dict(self, twitter_data, **kw):
+    def __cmp__(self, other):
+        return cmp(self.created_at, other.created_at)
+
+    def to_dict(self, twitter_data, event=None):
+        source = twitter_data.get_user(self.source_id)
+        target = twitter_data.get_user(self.target_id)
+
         follow_dict = {
-            'event': kw.pop('event', 'follow'),
-            'source': twitter_data.get_user(self.source_id),
-            'target': twitter_data.get_user(self.target_id),
+            'source': source.to_dict(twitter_data),
+            'target': target.to_dict(twitter_data),
         }
+
+        if event is not None:
+            follow_dict['event'] = event
 
         # Provided keyword args can override any of the above
         follow_dict.update(self.kw)
@@ -352,8 +360,12 @@ class FakeTwitterData(object):
         key = (source_id, target_id)
 
         if key not in self.follows:
-            self.follows[key] = FakeFollow(source_id, target_id)
+            follow = self.follows[key] = FakeFollow(source_id, target_id)
             self.broadcast_follow(source_id, target_id)
+        else:
+            follow = self.follows[key]
+
+        return follow
 
     def del_tweet(self, id_str):
         self.tweets.pop(id_str)
