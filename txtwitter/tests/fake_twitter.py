@@ -248,11 +248,32 @@ class FakeUser(object):
         return user_dict
 
 
+class FakeFollow(object):
+    def __init__(self, source_id, target_id, **kw):
+        self.source_id = source_id
+        self.target_id = target_id
+        self.created_at = kw.pop('created_at', datetime.utcnow())
+        self.kw = kw
+
+    def to_event_dict(self, twitter_data, **kw):
+        follow_dict = {
+            'event': kw.pop('event', 'follow'),
+            'source': twitter_data.get_user(self.source_id),
+            'target': twitter_data.get_user(self.target_id),
+        }
+
+        # Provided keyword args can override any of the above
+        follow_dict.update(self.kw)
+
+        return follow_dict
+
+
 class FakeTwitterData(object):
     def __init__(self):
         self.users = {}
         self.dms = {}
         self.tweets = {}
+        self.follows = {}
         self.streams = {}
         self._next_dm_id = 1000
         self._next_tweet_id = 1000
@@ -287,20 +308,6 @@ class FakeTwitterData(object):
     def broadcast_unfollow(self, source_id, target_id):
         pass
         # TODO
-
-    def follow(self, source_id, target_id):
-        source = self.get_user(source_id)
-
-        if target_id not in source.follower_ids:
-            source.follower_ids.append(target_id)
-            self.broadcast_unfollow(source_id, target_id)
-
-    def unfollow(self, source_id, target_id):
-        source = self.get_user(source_id)
-
-        if target_id in source.follower_ids:
-            source.follower_ids.remove(target_id)
-            self.broadcast_unfollow(source_id, target_id)
 
     def new_stream(self):
         stream = FakeStream()
@@ -341,6 +348,13 @@ class FakeTwitterData(object):
         self.users[user.id_str] = user
         return user
 
+    def add_follow(self, source_id, target_id):
+        key = (source_id, target_id)
+
+        if key not in self.follows:
+            self.follows[key] = FakeFollow(source_id, target_id)
+            self.broadcast_follow(source_id, target_id)
+
     def del_tweet(self, id_str):
         self.tweets.pop(id_str)
 
@@ -349,6 +363,13 @@ class FakeTwitterData(object):
 
     def del_user(self, id_str):
         self.users.pop(id_str)
+
+    def del_follow(self, source_id, target_id):
+        key = (source_id, target_id)
+
+        if key in self.follows:
+            del self.follows[key]
+            self.broadcast_unfollow(source_id, target_id)
 
     def new_tweet(self, text, user_id_str, *args, **kw):
         tweet = self.add_tweet(

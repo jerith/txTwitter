@@ -417,65 +417,34 @@ class TestFakeTwitterData(TestCase):
         self.assertEqual(user.screen_name, 'fakeuser')
         self.assertEqual(user.name, 'Fake User')
 
-    def test_follow(self):
+    def test_add_follow(self):
         twitter = self._FakeTwitterData()
-        user1 = twitter.add_user('1', 'fakeuser', 'Fake User')
-        user2 = twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+        self.assertEqual(twitter.follows, {})
 
-        self.assertEqual(user1.follower_ids, [])
-        self.assertEqual(user2.follower_ids, [])
+        twitter.add_follow('1', '2')
+        follow1 = twitter.follows[('1', '2')]
+        self.assertEqual(follow1.source_id, '1')
+        self.assertEqual(follow1.target_id, '2')
 
-        twitter.follow('1', '2')
-        self.assertEqual(user1.follower_ids, ['2'])
-        self.assertEqual(user2.follower_ids, [])
+        twitter.add_follow('2', '1')
+        follow2 = twitter.follows[('2', '1')]
+        self.assertEqual(follow2.source_id, '2')
+        self.assertEqual(follow2.target_id, '1')
 
-        twitter.follow('2', '1')
-        self.assertEqual(user1.follower_ids, ['2'])
-        self.assertEqual(user2.follower_ids, ['1'])
-
-    def test_follow_idempotent(self):
+    def test_del_follow(self):
         twitter = self._FakeTwitterData()
-        user1 = twitter.add_user('1', 'fakeuser', 'Fake User')
-        user2 = twitter.add_user('2', 'fakeuser2', 'Fake User 2')
+        twitter.add_follow('1', '2')
+        twitter.add_follow('2', '1')
+        self.assertTrue(('1', '2') in twitter.follows)
+        self.assertTrue(('2', '1') in twitter.follows)
 
-        twitter.follow('1', '2')
-        twitter.follow('2', '1')
-        twitter.follow('1', '2')
-        twitter.follow('2', '1')
-        self.assertEqual(user1.follower_ids, ['2'])
-        self.assertEqual(user2.follower_ids, ['1'])
+        twitter.del_follow('1', '2')
+        self.assertTrue(('1', '2') not in twitter.follows)
+        self.assertTrue(('2', '1') in twitter.follows)
 
-    def test_unfollow(self):
-        twitter = self._FakeTwitterData()
-        user1 = twitter.add_user('1', 'fakeuser', 'Fake User')
-        user2 = twitter.add_user('2', 'fakeuser2', 'Fake User 2')
-
-        twitter.follow('1', '2')
-        twitter.follow('2', '1')
-        self.assertEqual(user1.follower_ids, ['2'])
-        self.assertEqual(user2.follower_ids, ['1'])
-
-        twitter.unfollow('2', '1')
-        self.assertEqual(user1.follower_ids, ['2'])
-        self.assertEqual(user2.follower_ids, [])
-
-        twitter.unfollow('1', '2')
-        self.assertEqual(user1.follower_ids, [])
-        self.assertEqual(user2.follower_ids, [])
-
-    def test_unfollow_idempotent(self):
-        twitter = self._FakeTwitterData()
-        user1 = twitter.add_user('1', 'fakeuser', 'Fake User')
-        user2 = twitter.add_user('2', 'fakeuser2', 'Fake User 2')
-        twitter.follow('1', '2')
-        twitter.follow('2', '1')
-
-        twitter.unfollow('1', '2')
-        twitter.unfollow('2', '1')
-        twitter.unfollow('1', '2')
-        twitter.unfollow('2', '1')
-        self.assertEqual(user1.follower_ids, [])
-        self.assertEqual(user2.follower_ids, [])
+        twitter.del_follow('2', '1')
+        self.assertTrue(('1', '2') not in twitter.follows)
+        self.assertTrue(('2', '1') not in twitter.follows)
 
 
 class TestFakeTwitter(TestCase):
