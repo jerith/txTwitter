@@ -685,6 +685,11 @@ class FakeTwitterAPI(object):
         if with_ != 'user':
             raise NotImplementedError("with != followings")
 
+        def userstream_follow_predicate(follow):
+            return (
+                follow.source_id == self._user_id_str or
+                follow.target_id == self._user_id_str)
+
         def userstream_tweet_predicate(tweet):
             if tweet.user_id_str == self._user_id_str:
                 return True
@@ -704,6 +709,7 @@ class FakeTwitterAPI(object):
         stream = self._twitter_data.new_stream()
         stream.add_message_type('tweet', userstream_tweet_predicate)
         stream.add_message_type('dm', userstream_dm_predicate)
+        stream.add_message_type('follow', userstream_follow_predicate)
 
         # TODO: Proper friends.
         stream.deliver({'friends_str': []})
