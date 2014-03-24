@@ -690,6 +690,9 @@ class FakeTwitterAPI(object):
                 follow.source_id == self._user_id_str or
                 follow.target_id == self._user_id_str)
 
+        def userstream_unfollow_predicate(follow):
+            return follow.source_id == self._user_id_str
+
         def userstream_tweet_predicate(tweet):
             if tweet.user_id_str == self._user_id_str:
                 return True
@@ -710,6 +713,7 @@ class FakeTwitterAPI(object):
         stream.add_message_type('tweet', userstream_tweet_predicate)
         stream.add_message_type('dm', userstream_dm_predicate)
         stream.add_message_type('follow', userstream_follow_predicate)
+        stream.add_message_type('unfollow', userstream_unfollow_predicate)
 
         # TODO: Proper friends.
         stream.deliver({'friends_str': []})

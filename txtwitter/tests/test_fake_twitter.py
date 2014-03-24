@@ -1038,6 +1038,33 @@ class TestFakeTwitterAPI(TestCase):
         resp.finished()
         self.assertEqual(twitter.streams, {})
 
+    def test_userstream_user_with_unfollows(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        twitter.add_user('2', 'fakeuser2', 'Fake User')
+        twitter.add_user('3', 'fakeuser3', 'Fake User')
+
+        follow1 = twitter.add_follow('1', '2')
+        twitter.add_follow('2', '1')
+        twitter.add_follow('2', '3')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        messages = []
+        resp = api.userstream_user(stringify_friend_ids='true', with_='user')
+        self._process_stream_response(resp, messages.append)
+        messages.pop(0)
+
+        twitter.del_follow('1', '2')
+        twitter.del_follow('2', '1')
+        twitter.del_follow('2', '3')
+
+        self.assertEqual(
+            messages,
+            [f for f in twitter.to_dicts(follow1, event='unfollow')])
+
+        resp.finished()
+        self.assertEqual(twitter.streams, {})
+
         # TODO: Replies
 
     # TODO: More tests for fake userstream_user()
