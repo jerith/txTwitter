@@ -836,7 +836,7 @@ class TwitterClient(object):
     # TODO: Implement friendships_outgoing()
 
     def friendships_create(self, user_id=None, screen_name=None,
-                               follow=None):
+                           follow=None):
         """
         Allows the authenticating users to follow the specified user.
 
