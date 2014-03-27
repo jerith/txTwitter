@@ -834,8 +834,53 @@ class TwitterClient(object):
     # TODO: Implement friendships_lookup()
     # TODO: Implement friendships_incoming()
     # TODO: Implement friendships_outgoing()
-    # TODO: Implement friendships_create()
-    # TODO: Implement friendships_destroy()
+
+    def friendships_create(self, user_id=None, screen_name=None,
+                           follow=None):
+        """
+        Allows the authenticating users to follow the specified user.
+
+        https://dev.twitter.com/docs/api/1.1/post/friendships/create
+
+        :param str user_id:
+            The screen name of the user for whom to befriend. Required if
+            ``screen_name`` isn't given.
+        :param str screen_name:
+            The ID of the user for whom to befriend. Required if ``user_id``
+            isn't given.
+        :param bool follow:
+            Enable notifications for the target user.
+
+        :returns:
+            A dict containing the newly followed user.
+        """
+        params = {}
+        set_str_param(params, 'user_id', user_id)
+        set_str_param(params, 'screen_name', screen_name)
+        set_bool_param(params, 'follow', follow)
+        return self._post_api('friendships/create.json', params)
+
+    def friendships_destroy(self, user_id=None, screen_name=None):
+        """
+        Allows the authenticating user to unfollow the specified user.
+
+        https://dev.twitter.com/docs/api/1.1/post/friendships/destroy
+
+        :param str user_id:
+            The screen name of the user for whom to unfollow. Required if
+            ``screen_name`` isn't given.
+        :param str screen_name:
+            The ID of the user for whom to unfollow. Required if ``user_id``
+            isn't given.
+
+        :returns:
+            A dict containing the newly unfollowed user.
+        """
+        params = {}
+        set_str_param(params, 'user_id', user_id)
+        set_str_param(params, 'screen_name', screen_name)
+        return self._post_api('friendships/destroy.json', params)
+
     # TODO: Implement friendships_update()
     # TODO: Implement friendships_show()
     # TODO: Implement friends_list()
