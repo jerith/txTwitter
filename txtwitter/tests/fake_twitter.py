@@ -296,25 +296,25 @@ class FakeTwitterData(object):
     def next_user_id(self):
         return str(self._next_user_id)
 
+    def streams_accepting(self, message_type, data):
+        return (stream for stream in self.streams.itervalues()
+                if stream.accepts(message_type, data))
+
     def broadcast_tweet(self, tweet):
-        for stream in self.streams.itervalues():
-            if stream.accepts('tweet', tweet):
-                stream.deliver(tweet.to_dict(self))
+        for stream in self.streams_accepting('tweet', tweet):
+            stream.deliver(tweet.to_dict(self))
 
     def broadcast_dm(self, dm):
-        for stream in self.streams.itervalues():
-            if stream.accepts('dm', dm):
-                stream.deliver({'direct_message': dm.to_dict(self)})
+        for stream in self.streams_accepting('dm', dm):
+            stream.deliver({'direct_message': dm.to_dict(self)})
 
     def broadcast_follow(self, follow):
-        for stream in self.streams.itervalues():
-            if stream.accepts('follow', follow):
-                stream.deliver(follow.to_dict(self, event='follow'))
+        for stream in self.streams_accepting('follow', follow):
+            stream.deliver(follow.to_dict(self, event='follow'))
 
     def broadcast_unfollow(self, follow):
-        for stream in self.streams.itervalues():
-            if stream.accepts('unfollow', follow):
-                stream.deliver(follow.to_dict(self, event='unfollow'))
+        for stream in self.streams_accepting('unfollow', follow):
+            stream.deliver(follow.to_dict(self, event='unfollow'))
 
     def new_stream(self):
         stream = FakeStream()
