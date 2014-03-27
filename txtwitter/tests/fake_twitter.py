@@ -249,10 +249,11 @@ class FakeUser(object):
 
 
 class FakeFollow(object):
-    def __init__(self, source_id, target_id, **kw):
+    def __init__(self, source_id, target_id, notify=False, **kw):
         self.source_id = source_id
         self.target_id = target_id
         self.created_at = kw.pop('created_at', datetime.utcnow())
+        self.notify = notify
         self.kw = kw
 
     def __cmp__(self, other):
@@ -340,6 +341,9 @@ class FakeTwitterData(object):
 
     def get_user(self, id_str):
         return self.users.get(id_str)
+
+    def get_follow(self, source_id, target_id):
+        return self.follows.get((source_id, target_id))
 
     def add_tweet(self, *args, **kw):
         tweet = FakeTweet(*args, **kw)
@@ -811,13 +815,35 @@ class FakeTwitterAPI(object):
 
     # Friends & Followers
 
+    @fake_api('friendships/create.json')
+    def friendships_create(self, user_id=None, screen_name=None, follow=None):
+        if follow is not None:
+            raise NotImplementedError("follow param")
+
+        user = None
+        if screen_name is not None:
+            user = self._twitter_data.get_user_by_screen_name(screen_name)
+        elif user_id is not None:
+            user = self._twitter_data.get_user(user_id)
+
+        if user is None:
+            # The actual response given to us by Twitter if no user was found
+            # or if both user_id and screen_name were not specified
+            raise TwitterAPIError(403, "Forbidden", json.dumps({
+                "errors": [{
+                    "message": "Cannot find specified user.",
+                    "code": 108
+                }]}))
+
+        self._twitter_data.add_follow(self._user_id_str, user.id_str)
+        return user.to_dict(self._twitter_data)
+
     # TODO: Implement friendships_no_retweets_ids()
     # TODO: Implement friends_ids()
     # TODO: Implement followers_ids()
     # TODO: Implement friendships_lookup()
     # TODO: Implement friendships_incoming()
     # TODO: Implement friendships_outgoing()
-    # TODO: Implement friendships_create()
     # TODO: Implement friendships_destroy()
     # TODO: Implement friendships_update()
     # TODO: Implement friendships_show()

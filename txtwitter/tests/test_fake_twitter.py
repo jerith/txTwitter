@@ -1342,13 +1342,55 @@ class TestFakeTwitterAPI(TestCase):
 
     # Friends & Followers
 
+    def test_friendships_create_by_screen_name(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        user2 = twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        response = api.friendships_create(screen_name='fakeuser2')
+        self.assertTrue(twitter.get_follow('1', '2') is not None)
+        self.assertEqual(response, user2.to_dict(twitter))
+
+    def test_friendships_create_by_user_id(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        user2 = twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        response = api.friendships_create(user_id='2')
+        self.assertTrue(twitter.get_follow('1', '2') is not None)
+        self.assertEqual(response, user2.to_dict(twitter))
+
+    def test_friendships_create_by_screen_name_no_user_exists(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+        self.assertRaises(
+            self._TwitterAPIError, api.friendships_create,
+            screen_name='fakeuser2')
+        self.assertTrue(twitter.get_follow('1', '2') is None)
+
+    def test_friendships_create_by_user_id_no_user_exists(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+        self.assertRaises(
+            self._TwitterAPIError, api.friendships_create, user_id='1')
+        self.assertTrue(twitter.get_follow('1', '2') is None)
+
+    def test_friendships_create_no_user_id_or_screen_name(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+        self.assertRaises(self._TwitterAPIError, api.friendships_create)
+        self.assertTrue(twitter.get_follow('1', '2') is None)
+
     # TODO: Tests for fake friendships_no_retweets_ids()
     # TODO: Tests for fake friends_ids()
     # TODO: Tests for fake followers_ids()
     # TODO: Tests for fake friendships_lookup()
     # TODO: Tests for fake friendships_incoming()
     # TODO: Tests for fake friendships_outgoing()
-    # TODO: Tests for fake friendships_create()
     # TODO: Tests for fake friendships_destroy()
     # TODO: Tests for fake friendships_update()
     # TODO: Tests for fake friendships_show()
