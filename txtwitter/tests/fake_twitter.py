@@ -253,6 +253,8 @@ class FakeFollow(object):
         self.kw = kw
 
     def __cmp__(self, other):
+        if not isinstance(other, FakeFollow):
+            return NotImplemented
         return cmp(self.created_at, other.created_at)
 
     def to_dict(self, twitter_data, event=None):
