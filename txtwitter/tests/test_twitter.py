@@ -1172,6 +1172,71 @@ class TestTwitterClient(TestCase):
         code, _phrase, body = err.args
         self.assertEqual((403, err_dict), (code, json.loads(body)))
 
+    @inlineCallbacks
+    def test_friendships_destroy_by_user_id(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/friendships/destroy.json'
+
+        expected_params = {
+            'user_id': '2'
+        }
+
+        response_data = {
+            # Truncated user data.
+            "id": 2,
+            "id_str": "2",
+            "screen_name": "fakeuser2",
+        }
+
+        agent.add_expected_request(
+            'POST', uri, expected_params, self._resp_json(response_data))
+
+        resp = yield client.friendships_destroy(user_id='2')
+        self.assertEqual(resp, response_data)
+
+    @inlineCallbacks
+    def test_friendships_destroy_by_screen_name(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/friendships/destroy.json'
+
+        expected_params = {
+            'screen_name': 'fakeuser2'
+        }
+
+        response_data = {
+            # Truncated user data.
+            "id": 2,
+            "id_str": "2",
+            "screen_name": "fakeuser2",
+        }
+
+        agent.add_expected_request(
+            'POST', uri, expected_params, self._resp_json(response_data))
+
+        resp = yield client.friendships_destroy(screen_name='fakeuser2')
+        self.assertEqual(resp, response_data)
+
+    def test_friendships_destroy_forbidden(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/friendships/destroy.json'
+
+        err_dict = {
+            "errors": [{
+                "message": "Sorry, that page does not exist",
+                "code": 34},
+            ]
+        }
+
+        agent.add_expected_request(
+            'POST', uri, {}, self._resp_json(err_dict, 404))
+
+        d = client.friendships_destroy()
+        d.addErrback(lambda f: f.value)
+        err = yield d
+
+        code, _phrase, body = err.args
+        self.assertEqual((404, err_dict), (code, json.loads(body)))
+
     # TODO: Tests for friendships_no_retweets_ids()
     # TODO: Tests for friends_ids()
     # TODO: Tests for followers_ids()
