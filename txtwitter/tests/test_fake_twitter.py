@@ -1385,6 +1385,68 @@ class TestFakeTwitterAPI(TestCase):
         self.assertRaises(self._TwitterAPIError, api.friendships_create)
         self.assertTrue(twitter.get_follow('1', '2') is None)
 
+    def test_friendships_destroy_by_screen_name(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        user2 = twitter.add_user('2', 'fakeuser2', 'Fake User')
+        twitter.add_follow('1', '2')
+
+        response = api.friendships_destroy(screen_name='fakeuser2')
+        self.assertTrue(twitter.get_follow('1', '2') is None)
+        self.assertEqual(response, user2.to_dict(twitter))
+
+    def test_friendships_destroy_by_user_id(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        user2 = twitter.add_user('2', 'fakeuser2', 'Fake User')
+        twitter.add_follow('1', '2')
+
+        response = api.friendships_destroy(user_id='2')
+        self.assertTrue(twitter.get_follow('1', '2') is None)
+        self.assertEqual(response, user2.to_dict(twitter))
+
+    def test_friendships_destroy_by_screen_name_no_follow_exists(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        user2 = twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        response = api.friendships_destroy(screen_name='fakeuser2')
+        self.assertEqual(response, user2.to_dict(twitter))
+
+    def test_friendships_destroy_by_screen_name_no_user_exists(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+        self.assertRaises(
+            self._TwitterAPIError, api.friendships_destroy,
+            screen_name='fakeuser2')
+
+    def test_friendships_destroy_by_user_id_no_follow_exists(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        user2 = twitter.add_user('2', 'fakeuser2', 'Fake User')
+
+        response = api.friendships_destroy(user_id='2')
+        self.assertEqual(response, user2.to_dict(twitter))
+
+    def test_friendships_destroy_by_user_id_no_user_exists(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+        self.assertRaises(
+            self._TwitterAPIError, api.friendships_destroy, user_id='1')
+
+    def test_friendships_destroy_no_user_id_or_screen_name(self):
+        twitter = self._FakeTwitterData()
+        api = self._FakeTwitterAPI(twitter, '1')
+        self.assertRaises(self._TwitterAPIError, api.friendships_destroy)
+
     # TODO: Tests for fake friendships_no_retweets_ids()
     # TODO: Tests for fake friends_ids()
     # TODO: Tests for fake followers_ids()

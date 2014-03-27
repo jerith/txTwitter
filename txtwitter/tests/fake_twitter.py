@@ -838,6 +838,22 @@ class FakeTwitterAPI(object):
         self._twitter_data.add_follow(self._user_id_str, user.id_str)
         return user.to_dict(self._twitter_data)
 
+    @fake_api('friendships/destroy.json')
+    def friendships_destroy(self, user_id=None, screen_name=None):
+        user = None
+        if screen_name is not None:
+            user = self._twitter_data.get_user_by_screen_name(screen_name)
+        elif user_id is not None:
+            user = self._twitter_data.get_user(user_id)
+
+        if user is None:
+            # The actual response given to us by Twitter if no user was found
+            # or if both user_id and screen_name were not specified
+            raise self._404()
+
+        self._twitter_data.del_follow(self._user_id_str, user.id_str)
+        return user.to_dict(self._twitter_data)
+
     # TODO: Implement friendships_no_retweets_ids()
     # TODO: Implement friends_ids()
     # TODO: Implement followers_ids()
