@@ -512,16 +512,16 @@ class TestFakeTwitterData(TestCase):
         twitter = self._FakeTwitterData()
         twitter.add_follow('1', '2')
         twitter.add_follow('2', '1')
-        self.assertTrue(('1', '2') in twitter.follows)
-        self.assertTrue(('2', '1') in twitter.follows)
+        self.assertEqual(set(twitter.follows.keys()), set([
+            ('1', '2'),
+            ('2', '1'),
+        ]))
 
         twitter.del_follow('1', '2')
-        self.assertTrue(('1', '2') not in twitter.follows)
-        self.assertTrue(('2', '1') in twitter.follows)
+        self.assertEqual(set(twitter.follows.keys()), set([('2', '1')]))
 
         twitter.del_follow('2', '1')
-        self.assertTrue(('1', '2') not in twitter.follows)
-        self.assertTrue(('2', '1') not in twitter.follows)
+        self.assertEqual(set(twitter.follows.keys()), set())
 
     def test_del_follow_broadcast(self):
         twitter = self._FakeTwitterData()
