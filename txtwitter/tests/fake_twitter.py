@@ -223,6 +223,7 @@ class FakeUser(object):
         self.screen_name = screen_name
         self.name = name
         self.created_at = kw.pop('created_at', datetime.utcnow())
+
         self.kw = kw
 
     def to_dict(self, twitter_data):
@@ -243,11 +244,41 @@ class FakeUser(object):
         return user_dict
 
 
+class FakeFollow(object):
+    def __init__(self, source_id, target_id, notify=False, **kw):
+        self.source_id = source_id
+        self.target_id = target_id
+        self.created_at = kw.pop('created_at', datetime.utcnow())
+        self.notify = notify
+        self.kw = kw
+
+    def __cmp__(self, other):
+        return cmp(self.created_at, other.created_at)
+
+    def to_dict(self, twitter_data, event=None):
+        source = twitter_data.get_user(self.source_id)
+        target = twitter_data.get_user(self.target_id)
+
+        follow_dict = {
+            'source': source.to_dict(twitter_data),
+            'target': target.to_dict(twitter_data),
+        }
+
+        if event is not None:
+            follow_dict['event'] = event
+
+        # Provided keyword args can override any of the above
+        follow_dict.update(self.kw)
+
+        return follow_dict
+
+
 class FakeTwitterData(object):
     def __init__(self):
         self.users = {}
         self.dms = {}
         self.tweets = {}
+        self.follows = {}
         self.streams = {}
         self._next_dm_id = 1000
         self._next_tweet_id = 1000
@@ -265,15 +296,25 @@ class FakeTwitterData(object):
     def next_user_id(self):
         return str(self._next_user_id)
 
+    def streams_accepting(self, message_type, data):
+        return (stream for stream in self.streams.itervalues()
+                if stream.accepts(message_type, data))
+
     def broadcast_tweet(self, tweet):
-        for stream in self.streams.itervalues():
-            if stream.accepts('tweet', tweet):
-                stream.deliver(tweet.to_dict(self))
+        for stream in self.streams_accepting('tweet', tweet):
+            stream.deliver(tweet.to_dict(self))
 
     def broadcast_dm(self, dm):
-        for stream in self.streams.itervalues():
-            if stream.accepts('dm', dm):
-                stream.deliver({'direct_message': dm.to_dict(self)})
+        for stream in self.streams_accepting('dm', dm):
+            stream.deliver({'direct_message': dm.to_dict(self)})
+
+    def broadcast_follow(self, follow):
+        for stream in self.streams_accepting('follow', follow):
+            stream.deliver(follow.to_dict(self, event='follow'))
+
+    def broadcast_unfollow(self, follow):
+        for stream in self.streams_accepting('unfollow', follow):
+            stream.deliver(follow.to_dict(self, event='unfollow'))
 
     def new_stream(self):
         stream = FakeStream()
@@ -297,6 +338,9 @@ class FakeTwitterData(object):
     def get_user(self, id_str):
         return self.users.get(id_str)
 
+    def get_follow(self, source_id, target_id):
+        return self.follows.get((source_id, target_id))
+
     def add_tweet(self, *args, **kw):
         tweet = FakeTweet(*args, **kw)
         self.tweets[tweet.id_str] = tweet
@@ -314,6 +358,17 @@ class FakeTwitterData(object):
         self.users[user.id_str] = user
         return user
 
+    def add_follow(self, source_id, target_id):
+        key = (source_id, target_id)
+
+        if key not in self.follows:
+            follow = self.follows[key] = FakeFollow(source_id, target_id)
+            self.broadcast_follow(follow)
+        else:
+            follow = self.follows[key]
+
+        return follow
+
     def del_tweet(self, id_str):
         self.tweets.pop(id_str)
 
@@ -322,6 +377,14 @@ class FakeTwitterData(object):
 
     def del_user(self, id_str):
         self.users.pop(id_str)
+
+    def del_follow(self, source_id, target_id):
+        key = (source_id, target_id)
+
+        if key in self.follows:
+            follow = self.follows[key]
+            del self.follows[key]
+            self.broadcast_unfollow(follow)
 
     def new_tweet(self, text, user_id_str, *args, **kw):
         tweet = self.add_tweet(
@@ -622,6 +685,14 @@ class FakeTwitterAPI(object):
         if with_ != 'user':
             raise NotImplementedError("with != followings")
 
+        def userstream_follow_predicate(follow):
+            return (
+                follow.source_id == self._user_id_str or
+                follow.target_id == self._user_id_str)
+
+        def userstream_unfollow_predicate(follow):
+            return follow.source_id == self._user_id_str
+
         def userstream_tweet_predicate(tweet):
             if tweet.user_id_str == self._user_id_str:
                 return True
@@ -641,6 +712,8 @@ class FakeTwitterAPI(object):
         stream = self._twitter_data.new_stream()
         stream.add_message_type('tweet', userstream_tweet_predicate)
         stream.add_message_type('dm', userstream_dm_predicate)
+        stream.add_message_type('follow', userstream_follow_predicate)
+        stream.add_message_type('unfollow', userstream_unfollow_predicate)
 
         # TODO: Proper friends.
         stream.deliver({'friends_str': []})
@@ -744,8 +817,46 @@ class FakeTwitterAPI(object):
     # TODO: Implement friendships_lookup()
     # TODO: Implement friendships_incoming()
     # TODO: Implement friendships_outgoing()
-    # TODO: Implement friendships_create()
-    # TODO: Implement friendships_destroy()
+
+    @fake_api('friendships/create.json')
+    def friendships_create(self, user_id=None, screen_name=None, follow=None):
+        if follow is not None:
+            raise NotImplementedError("follow param")
+
+        user = None
+        if screen_name is not None:
+            user = self._twitter_data.get_user_by_screen_name(screen_name)
+        elif user_id is not None:
+            user = self._twitter_data.get_user(user_id)
+
+        if user is None:
+            # The actual response given to us by Twitter if no user was found
+            # or if both user_id and screen_name were not specified
+            raise TwitterAPIError(403, "Forbidden", json.dumps({
+                "errors": [{
+                    "message": "Cannot find specified user.",
+                    "code": 108
+                }]}))
+
+        self._twitter_data.add_follow(self._user_id_str, user.id_str)
+        return user.to_dict(self._twitter_data)
+
+    @fake_api('friendships/destroy.json')
+    def friendships_destroy(self, user_id=None, screen_name=None):
+        user = None
+        if screen_name is not None:
+            user = self._twitter_data.get_user_by_screen_name(screen_name)
+        elif user_id is not None:
+            user = self._twitter_data.get_user(user_id)
+
+        if user is None:
+            # The actual response given to us by Twitter if no user was found
+            # or if both user_id and screen_name were not specified
+            raise self._404()
+
+        self._twitter_data.del_follow(self._user_id_str, user.id_str)
+        return user.to_dict(self._twitter_data)
+
     # TODO: Implement friendships_update()
     # TODO: Implement friendships_show()
     # TODO: Implement friends_list()
