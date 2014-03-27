@@ -1037,7 +1037,7 @@ class TestFakeTwitterAPI(TestCase):
 
         self.assertEqual(
             messages,
-            [f for f in twitter.to_dicts(follow1, follow2, event='follow')])
+            twitter.to_dicts(follow1, follow2, event='follow'))
 
         resp.finished()
         self.assertEqual(twitter.streams, {})
@@ -1064,12 +1064,10 @@ class TestFakeTwitterAPI(TestCase):
 
         self.assertEqual(
             messages,
-            [f for f in twitter.to_dicts(follow1, event='unfollow')])
+            twitter.to_dicts(follow1, event='unfollow'))
 
         resp.finished()
         self.assertEqual(twitter.streams, {})
-
-        # TODO: Replies
 
     # TODO: More tests for fake userstream_user()
 
