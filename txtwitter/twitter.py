@@ -828,6 +828,13 @@ class TwitterClient(object):
 
     # Friends & Followers
 
+    # TODO: Implement friendships_no_retweets_ids()
+    # TODO: Implement friends_ids()
+    # TODO: Implement followers_ids()
+    # TODO: Implement friendships_lookup()
+    # TODO: Implement friendships_incoming()
+    # TODO: Implement friendships_outgoing()
+
     def friendships_create(self, user_id=None, screen_name=None,
                                follow=None):
         """
@@ -874,13 +881,6 @@ class TwitterClient(object):
         set_str_param(params, 'screen_name', screen_name)
         return self._post_api('friendships/destroy.json', params)
 
-    # TODO: Implement friendships_no_retweets_ids()
-    # TODO: Implement friends_ids()
-    # TODO: Implement followers_ids()
-    # TODO: Implement friendships_lookup()
-    # TODO: Implement friendships_incoming()
-    # TODO: Implement friendships_outgoing()
-    # TODO: Implement friendships_destroy()
     # TODO: Implement friendships_update()
     # TODO: Implement friendships_show()
     # TODO: Implement friends_list()

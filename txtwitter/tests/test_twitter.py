@@ -1083,6 +1083,13 @@ class TestTwitterClient(TestCase):
 
     # Friends & Followers
 
+    # TODO: Tests for friendships_no_retweets_ids()
+    # TODO: Tests for friends_ids()
+    # TODO: Tests for followers_ids()
+    # TODO: Tests for friendships_lookup()
+    # TODO: Tests for friendships_incoming()
+    # TODO: Tests for friendships_outgoing()
+
     @inlineCallbacks
     def test_friendships_create_by_user_id(self):
         agent, client = self._agent_and_TwitterClient()
@@ -1237,13 +1244,6 @@ class TestTwitterClient(TestCase):
         code, _phrase, body = err.args
         self.assertEqual((404, err_dict), (code, json.loads(body)))
 
-    # TODO: Tests for friendships_no_retweets_ids()
-    # TODO: Tests for friends_ids()
-    # TODO: Tests for followers_ids()
-    # TODO: Tests for friendships_lookup()
-    # TODO: Tests for friendships_incoming()
-    # TODO: Tests for friendships_outgoing()
-    # TODO: Tests for friendships_destroy()
     # TODO: Tests for friendships_update()
     # TODO: Tests for friendships_show()
     # TODO: Tests for friends_list()
