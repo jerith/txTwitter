@@ -1341,6 +1341,12 @@ class TestFakeTwitterAPI(TestCase):
             self._TwitterAPIError, api.direct_messages_new, 'hello')
 
     # Friends & Followers
+    # TODO: Tests for fake friendships_no_retweets_ids()
+    # TODO: Tests for fake friends_ids()
+    # TODO: Tests for fake followers_ids()
+    # TODO: Tests for fake friendships_lookup()
+    # TODO: Tests for fake friendships_incoming()
+    # TODO: Tests for fake friendships_outgoing()
 
     def test_friendships_create_by_screen_name(self):
         twitter = self._FakeTwitterData()
@@ -1447,13 +1453,6 @@ class TestFakeTwitterAPI(TestCase):
         api = self._FakeTwitterAPI(twitter, '1')
         self.assertRaises(self._TwitterAPIError, api.friendships_destroy)
 
-    # TODO: Tests for fake friendships_no_retweets_ids()
-    # TODO: Tests for fake friends_ids()
-    # TODO: Tests for fake followers_ids()
-    # TODO: Tests for fake friendships_lookup()
-    # TODO: Tests for fake friendships_incoming()
-    # TODO: Tests for fake friendships_outgoing()
-    # TODO: Tests for fake friendships_destroy()
     # TODO: Tests for fake friendships_update()
     # TODO: Tests for fake friendships_show()
     # TODO: Tests for fake friends_list()

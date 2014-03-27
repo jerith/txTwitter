@@ -811,6 +811,13 @@ class FakeTwitterAPI(object):
 
     # Friends & Followers
 
+    # TODO: Implement friendships_no_retweets_ids()
+    # TODO: Implement friends_ids()
+    # TODO: Implement followers_ids()
+    # TODO: Implement friendships_lookup()
+    # TODO: Implement friendships_incoming()
+    # TODO: Implement friendships_outgoing()
+
     @fake_api('friendships/create.json')
     def friendships_create(self, user_id=None, screen_name=None, follow=None):
         if follow is not None:
@@ -850,13 +857,6 @@ class FakeTwitterAPI(object):
         self._twitter_data.del_follow(self._user_id_str, user.id_str)
         return user.to_dict(self._twitter_data)
 
-    # TODO: Implement friendships_no_retweets_ids()
-    # TODO: Implement friends_ids()
-    # TODO: Implement followers_ids()
-    # TODO: Implement friendships_lookup()
-    # TODO: Implement friendships_incoming()
-    # TODO: Implement friendships_outgoing()
-    # TODO: Implement friendships_destroy()
     # TODO: Implement friendships_update()
     # TODO: Implement friendships_show()
     # TODO: Implement friends_list()
