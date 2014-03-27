@@ -360,14 +360,18 @@ class TestFakeFollow(TestCase):
     def test_to_dict_event(self):
         twitter = self._FakeTwitterData()
 
-        twitter.add_user(
+        user1 = twitter.add_user(
             '1', 'fakeuser', 'Fake User', created_at=self._now)
-        twitter.add_user(
+        user2 = twitter.add_user(
             '2', 'fakeuser2', 'Fake User 2', created_at=self._now)
         follow = twitter.add_follow('1', '2')
 
         follow_dict = follow.to_dict(twitter, event='follow')
-        self.assertEqual(follow_dict['event'], 'follow')
+        self.assertEqual(follow_dict, {
+            'event': 'follow',
+            'source': user1.to_dict(twitter),
+            'target': user2.to_dict(twitter)
+        })
 
 
 class TestFakeTwitterData(TestCase):
