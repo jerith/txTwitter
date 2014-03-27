@@ -218,15 +218,11 @@ class FakeDM(object):
 
 
 class FakeUser(object):
-    def __init__(self, id_str, screen_name, name, follower_ids=None, **kw):
+    def __init__(self, id_str, screen_name, name, **kw):
         self.id_str = id_str
         self.screen_name = screen_name
         self.name = name
         self.created_at = kw.pop('created_at', datetime.utcnow())
-
-        if follower_ids is None:
-            follower_ids = []
-        self.follower_ids = follower_ids
 
         self.kw = kw
 
