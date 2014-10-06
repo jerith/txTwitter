@@ -65,18 +65,21 @@ def set_str_param(params, name, value):
 
     :param str name: The name of the parameter to set.
 
-    :param bool value:
+    :param value:
         The value of the parameter. If ``None``, the field will not be set. If
-        an instance of ``basestring``, the relevant field will be set. Any
-        other value will raise a `ValueError`.
+        an instance of ``str``, the relevant field will be set. If an instance
+        of ``unicode``, the relevant field will be set to the UTF-8 encoding.
+        Any other value will raise a `ValueError`.
 
     :returns: ``None``
     """
     if value is None:
         return
 
-    if isinstance(value, basestring):
+    if isinstance(value, str):
         params[name] = value
+    elif isinstance(value, unicode):
+        params[name] = value.encode('utf-8')
     else:
         raise ValueError("Parameter '%s' must be a string or None, got %r." % (
             name, value))
@@ -539,7 +542,8 @@ class TwitterClient(object):
         :returns:
             A tweet dict containing the posted tweet.
         """
-        params = {'status': status}
+        params = {}
+        set_str_param(params, 'status', status)
         set_str_param(params, 'in_reply_to_status_id', in_reply_to_status_id)
         set_float_param(params, 'lat', lat, min=-90, max=90)
         set_float_param(params, 'long', long, min=-180, max=180)
