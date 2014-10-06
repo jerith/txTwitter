@@ -531,6 +531,21 @@ class TestTwitterClient(TestCase):
         self.assertEqual(resp, response_dict)
 
     @inlineCallbacks
+    def test_statuses_update_unicode(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://api.twitter.com/1.1/statuses/update.json'
+        response_dict = {
+            # Truncated tweet data.
+            "id_str": "123",
+            "text": u"Tw\xeb\xebt!",
+        }
+        agent.add_expected_request(
+            'POST', uri, {'status': u"Tw\xeb\xebt!".encode('utf-8')},
+            self._resp_json(response_dict))
+        resp = yield client.statuses_update(u"Tw\xeb\xebt!")
+        self.assertEqual(resp, response_dict)
+
+    @inlineCallbacks
     def test_statuses_update_all_params(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/statuses/update.json'
