@@ -877,6 +877,7 @@ class TestTwitterClient(TestCase):
         resp = yield client.direct_messages_show('1')
         self.assertEqual(resp, response_data[0])
 
+    @inlineCallbacks
     def test_direct_messages_show_not_found(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/direct_messages/show.json'
@@ -891,13 +892,14 @@ class TestTwitterClient(TestCase):
         agent.add_expected_request(
             'GET', uri, {'id': '1'}, self._resp_json(err_dict, 404))
 
-        d = client.direct_messages_show(1)
+        d = client.direct_messages_show("1")
         d.addErrback(lambda f: f.value)
         err = yield d
 
         code, _phrase, body = err.args
         self.assertEqual((404, err_dict), (code, json.loads(body)))
 
+    @inlineCallbacks
     def test_direct_messages_show_forbidden(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/direct_messages/show.json'
@@ -912,7 +914,7 @@ class TestTwitterClient(TestCase):
         agent.add_expected_request(
             'GET', uri, {'id': '1'}, self._resp_json(err_dict, 403))
 
-        d = client.direct_messages_show(1)
+        d = client.direct_messages_show("1")
         d.addErrback(lambda f: f.value)
         err = yield d
 
@@ -943,6 +945,7 @@ class TestTwitterClient(TestCase):
         resp = yield client.direct_messages_destroy('1')
         self.assertEqual(resp, response_data)
 
+    @inlineCallbacks
     def test_direct_messages_destroy_all_params(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/direct_messages/destroy.json'
@@ -972,6 +975,7 @@ class TestTwitterClient(TestCase):
             '1', include_entities=False)
         self.assertEqual(resp, response_data)
 
+    @inlineCallbacks
     def test_direct_messages_destroy_not_found(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/direct_messages/destroy.json'
@@ -984,15 +988,16 @@ class TestTwitterClient(TestCase):
         }
 
         agent.add_expected_request(
-            'GET', uri, {'id': '1'}, self._resp_json(err_dict, 404))
+            'POST', uri, {'id': '1'}, self._resp_json(err_dict, 404))
 
-        d = client.direct_messages_destroy(1)
+        d = client.direct_messages_destroy("1")
         d.addErrback(lambda f: f.value)
         err = yield d
 
         code, _phrase, body = err.args
         self.assertEqual((404, err_dict), (code, json.loads(body)))
 
+    @inlineCallbacks
     def test_direct_messages_destroy_forbidden(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/direct_messages/destroy.json'
@@ -1005,9 +1010,9 @@ class TestTwitterClient(TestCase):
         }
 
         agent.add_expected_request(
-            'GET', uri, {'id': '1'}, self._resp_json(err_dict, 403))
+            'POST', uri, {'id': '1'}, self._resp_json(err_dict, 403))
 
-        d = client.direct_messages_destroy(1)
+        d = client.direct_messages_destroy("1")
         d.addErrback(lambda f: f.value)
         err = yield d
 
@@ -1073,6 +1078,7 @@ class TestTwitterClient(TestCase):
             'hello', screen_name='fakeuser2')
         self.assertEqual(resp, response_data)
 
+    @inlineCallbacks
     def test_direct_messages_new_bad_request(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/direct_messages/new.json'
@@ -1087,7 +1093,7 @@ class TestTwitterClient(TestCase):
         }
 
         agent.add_expected_request(
-            'GET', uri, {'id': '1'}, self._resp_json(err_dict, 400))
+            'POST', uri, {'text': 'hello'}, self._resp_json(err_dict, 403))
 
         d = client.direct_messages_new('hello')
         d.addErrback(lambda f: f.value)
@@ -1173,6 +1179,7 @@ class TestTwitterClient(TestCase):
             screen_name='fakeuser2', follow=True)
         self.assertEqual(resp, response_data)
 
+    @inlineCallbacks
     def test_friendships_create_forbidden(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/friendships/create.json'
@@ -1238,6 +1245,7 @@ class TestTwitterClient(TestCase):
         resp = yield client.friendships_destroy(screen_name='fakeuser2')
         self.assertEqual(resp, response_data)
 
+    @inlineCallbacks
     def test_friendships_destroy_forbidden(self):
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://api.twitter.com/1.1/friendships/destroy.json'
