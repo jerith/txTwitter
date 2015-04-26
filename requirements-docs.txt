@@ -1,0 +1,3 @@
+# Sphinx 1.3 emits some markup that the RTD theme doesn't yet understand.
+Sphinx<1.3
+sphinx_rtd_theme

@@ -28,3 +28,6 @@ htmlcov
 .tox
 
 _trial_temp
+
+# Built docs
+/docs/_build
