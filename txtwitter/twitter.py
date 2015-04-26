@@ -696,7 +696,7 @@ class TwitterClient(object):
             since the since_id, the since_id will be forced to the oldest ID
             available.
 
-        :params str max_id:
+        :param str max_id:
             Returns results with an ID less than (that is, older than) or equal
             to the specified ID.
 
@@ -739,7 +739,7 @@ class TwitterClient(object):
             since the since_id, the since_id will be forced to the oldest ID
             available.
 
-        :params str max_id:
+        :param str max_id:
             Returns results with an ID less than (that is, older than) or equal
             to the specified ID.
 
