@@ -33,17 +33,33 @@ credentials: [#creds]_
 
 .. code-block:: python
 
-   twitter = self.TwitterClient(
+   from txtwitter.twitter import TwitterClient
+   from twisted.internet.task import react
+
+   # Create an authenticated twitter client instance.
+   twitter = TwitterClient(
        consumer_key='cChZNFj6T5R0TigYB9yd1w',
        consumer_secret='L8qq9PZyRg6ieKGEKhZolGC0vJWLw8iEJ88DRdyOg',
        token_key='7588892-kagSNqWge8gB1WwE3plnFsJHAZVfxWD7Vb57p0b4',
        token_secret='PbKfYqSryyeKDWz4ebtY3o5ogNLG11WJuZBc9fQrQo')
 
-.. code-block:: python
 
-   tweets_d = twitter.statuses_user_timeline(
-       screen_name="twistedmatrix")
-   tweets_d.addCallback(...)
+   # We need a callback function to do something with the tweets we get.
+   # This one just prints them.
+   def print_tweets(tweets):
+       for tweet in tweets:
+           print tweet['text']
+
+   def main(reactor):
+       # We'll be getting the most recent tweets from @twistedmatrix.
+       tweets_d = twitter.statuses_user_timeline(screen_name="twistedmatrix")
+       # Add our callback to the Deferred result so the tweets will be printed.
+       tweets_d.addCallback(print_tweets)
+       # Return the Deferred so react() waits for it to finish.
+       return tweets
+
+   # We're ready, run the Twisted reactor!
+   react(main)
 
 .. rubric:: Footnotes
 
