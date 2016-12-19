@@ -171,6 +171,52 @@ def set_int_param(params, name, value, min=None, max=None):
     params[name] = str(value)
 
 
+def set_list_param(params, name, value, min_len=None, max_len=None):
+    """
+    Set a list parameter if applicable.
+
+    :param dict params: A dict containing API call parameters.
+
+    :param str name: The name of the parameter to set.
+
+    :param list value:
+        The value of the parameter. If ``None``, the field will not be set. If
+        an instance of ``set``, ``tuple``, or type that can be turned into
+        a ``list``, the relevant field will be set. If ``dict``, will raise
+        ``ValueError``. Any other value will raise a ``ValueError``.
+
+    :param int min_len:
+        If provided, values shorter than this will raise ``ValueError``.
+
+    :param int max_len:
+        If provided, values longer than this will raise ``ValueError``.
+    """
+    if value is None:
+        return
+
+    if type(value) is dict:
+        raise ValueError(
+            "Parameter '%s' cannot be a dict." % name)
+
+    try:
+        value = list(value)
+    except:
+        raise ValueError(
+            "Parameter '%s' must be a list (or a type that can be turned into"
+            "a list) or None, got %r." % (name, value))
+
+    if min_len is not None and len(value) < min_len:
+        raise ValueError(
+            "Parameter '%s' must not be shorter than %r, got %r." % (
+                name, min_len, value))
+    if max_len is not None and len(value) > max_len:
+        raise ValueError(
+            "Parameter '%s' must not be longer than %r, got %r." % (
+                name, max_len, value))
+
+    params[name] = value
+
+
 class TwitterClient(object):
     """
     TODO: Document this.
