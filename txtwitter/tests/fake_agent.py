@@ -65,6 +65,10 @@ class FakeAgent(object):
         key = (method, urlsplit(uri).geturl(), tuple(sorted(params.items())))
         self.expected_requests[key] = response
 
+    def add_expected_multipart(self, uri, body, response):
+        key = ('POST', urlsplit(uri).geturl(), body)
+        self.expected_requests[key] = response
+
     @inlineCallbacks
     def request(self, method, uri, headers=None, bodyProducer=None):
         scheme, netloc, path, query, fragment = urlsplit(uri)
@@ -77,6 +81,14 @@ class FakeAgent(object):
                 consumer = StringIO()
                 yield bodyProducer.startProducing(consumer)
                 params.extend(parse_qsl(consumer.getvalue()))
+            if ctypes == ['multipart/form-data; boundary=txtwitter']:
+                consumer = StringIO()
+                yield bodyProducer.startProducing(consumer)
+                multipart_body = consumer.getvalue()
+                key = ('POST', uri, multipart_body)
+                assert key in self.expected_requests, (
+                    'Request key not found: %s' % (key,))
+                returnValue(self.expected_requests[key])
 
         key = (method, uri, tuple(sorted(params)))
         assert key in self.expected_requests, (
