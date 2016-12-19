@@ -664,6 +664,45 @@ class TestTwitterClient(TestCase):
         resp = yield client.statuses_retweet("123", trim_user=True)
         self.assertEqual(resp, response_dict)
 
+    @inlineCallbacks
+    def test_media_upload(self):
+        class FakeImage():
+            name = 'image'
+
+            def read(self):
+                return 'raw_binary_content'
+
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://upload.twitter.com/1.1/media/upload.json'
+        media = FakeImage()
+        response_dict = {
+            'media_id': 123,
+            'media_id_string': '123',
+            'size': 1,
+            'expires_after_secs': 60,
+            'image': {
+                'image_type': 'image/jpeg',
+                'h': 1,
+                'w': 1,
+            },
+        }
+        expected_body = (
+            '--txtwitter\r\n'
+            'Content-Disposition: form-data, name=additional_owners\r\n'
+            '\r\n'
+            '[1, 2]\r\n'
+            '--txtwitter\r\n'
+            'Content-Disposition: form-data; name=media; filename=image\r\n'
+            'Content-Type: application/octet-stream\r\n'
+            '\r\n'
+            'raw_binary_content\r\n'
+            '--txtwitter--\r\n'
+        )
+        agent.add_expected_multipart(
+            uri, expected_body, self._resp_json(response_dict))
+        resp = yield client.media_upload(media, additional_owners=[1, 2])
+        self.assertEqual(resp, response_dict)
+
     # TODO: Tests for statuses_update_with_media()
     # TODO: Tests for statuses_oembed()
     # TODO: Tests for statuses_retweeters_ids()
