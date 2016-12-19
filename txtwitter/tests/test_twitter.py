@@ -614,12 +614,14 @@ class TestTwitterClient(TestCase):
             'place_id': 'abc123',
             'display_coordinates': 'true',
             'trim_user': 'true',
+            'media_ids': '[1, 2]',
         }
         agent.add_expected_request(
             'POST', uri, expected_params, self._resp_json(response_dict))
         resp = yield client.statuses_update(
             "Tweet!", in_reply_to_status_id="122", lat=-33.93, long=18.42,
-            place_id='abc123', display_coordinates=True, trim_user=True)
+            place_id='abc123', display_coordinates=True, trim_user=True,
+            media_ids=[1, 2])
         self.assertEqual(resp, response_dict)
 
     @inlineCallbacks

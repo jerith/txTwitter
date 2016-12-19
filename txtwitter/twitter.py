@@ -536,7 +536,7 @@ class TwitterClient(object):
 
     def statuses_update(self, status, in_reply_to_status_id=None, lat=None,
                         long=None, place_id=None, display_coordinates=None,
-                        trim_user=None):
+                        trim_user=None, media_ids=None):
         """
         Posts a tweet.
 
@@ -585,6 +585,11 @@ class TwitterClient(object):
             When set to ``True``, the return value's user object includes only
             the status author's numerical ID.
 
+        :param list media_ids:
+            A list of images previously uploaded to Twitter (referenced by
+            their ``media_id``) that are to be embedded in the tweet. Maximum
+            of four images.
+
         :returns:
             A tweet dict containing the posted tweet.
         """
@@ -596,6 +601,7 @@ class TwitterClient(object):
         set_str_param(params, 'place_id', place_id)
         set_bool_param(params, 'display_coordinates', display_coordinates)
         set_bool_param(params, 'trim_user', trim_user)
+        set_list_param(params, 'media_ids', media_ids, max_len=4)
         return self._post_api('statuses/update.json', params)
 
     def statuses_retweet(self, id, trim_user=None):
