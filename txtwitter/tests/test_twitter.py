@@ -19,6 +19,7 @@ class TestParamHelpers(TestCase):
     _set_str_param = from_twitter('set_str_param')
     _set_float_param = from_twitter('set_float_param')
     _set_int_param = from_twitter('set_int_param')
+    _set_list_param = from_twitter('set_list_param')
 
     def test_set_bool_param_None(self):
         """
@@ -211,6 +212,57 @@ class TestParamHelpers(TestCase):
         (and cannot be turned into one) or ``None``.
         """
         self.assertRaises(ValueError, self._set_int_param, {}, 42.5, True)
+
+    def test_set_list_param(self):
+        """
+        set_list_param() should set the param if the value is a ``list``.
+        """
+        params = {}
+        self._set_list_param(params, 'list', [1, 2, 3])
+        self.assertEqual(params, {'list': [1, 2, 3]})
+
+    def test_set_list_param_min_len(self):
+        """
+        set_list_param() should raise a ``ValueError`` if the value is shorter
+        than ``min_len``.
+        """
+        self.assertRaises(
+            ValueError, self._set_list_param, {}, 'list', [1, 2], min_len=5)
+
+    def test_set_list_param_max_len(self):
+        """
+        set_list_param() should raise a ``ValueError`` if the value is longer
+        than ``max_len``.
+        """
+        self.assertRaises(
+            ValueError, self._set_list_param, {}, 'list', [1, 2], max_len=1)
+
+    def test_set_list_param_bad_types(self):
+        """
+        set_list_param() should raise a ``ValueError`` if the value is a
+        ``dict``, or any type that cannot be turned into a ``list``.
+        """
+        self.assertRaises(
+            ValueError, self._set_list_param, {}, 'dict', {'a': 1})
+        self.assertRaises(
+            ValueError, self._set_list_param, {}, 'int', 1)
+
+    def test_set_list_param_good_types(self):
+        """
+        set_list_param() should set the param if the value is a type that can
+        be turned into a ``list``.
+        """
+        params = {}
+        self._set_list_param(params, 'set', {1, 2, 3})
+        self._set_list_param(params, 'tuple', (1, 2, 3))
+        self._set_list_param(params, 'frozenset', frozenset({1, 2, 3}))
+        self._set_list_param(params, 'string', 'foo')
+        self.assertEqual(params, {
+            'set': [1, 2, 3],
+            'tuple': [1, 2, 3],
+            'frozenset': [1, 2, 3],
+            'string': ['f', 'o', 'o'],
+        })
 
 
 class TestTwitterClient(TestCase):
