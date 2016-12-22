@@ -374,8 +374,62 @@ class TestFakeFollow(TestCase):
         })
 
 
+class TestFakeImage(TestCase):
+    _FakeImage = from_fake_twitter('FakeImage')
+
+    def test_create_fake_image_defaults(self):
+        image = self._FakeImage('image', 'content')
+        self.assertEqual(image.name, 'image')
+        self.assertEqual(image.height, image.width, 1)
+        self.assertEqual(image.size, 1)
+
+    def test_create_fake_image_params(self):
+        image = self._FakeImage('image', 'content', size=2, height=2, width=2)
+        self.assertEqual(image.height, image.width, 2)
+        self.assertEqual(image.size, 2)
+
+    def test_read(self):
+        image = self._FakeImage('image', 'content')
+        self.assertEqual(image.read(), 'content')
+
+
+class TestFakeMedia(TestCase):
+    _FakeTwitterData = from_fake_twitter('FakeTwitterData')
+    _FakeMedia = from_fake_twitter('FakeMedia')
+    _FakeImage = from_fake_twitter('FakeImage')
+
+    def test_create_fake_media(self):
+        image = self._FakeImage('image', 'content')
+        media = self._FakeMedia('1', image)
+        self.assertEqual(media.media_id_str, '1')
+        self.assertEqual(media.size, image.size)
+        self.assertEqual(media.expires_after_secs, 60)
+        self.assertEqual(media.image, {
+            'image_type': 'image/jpeg',
+            'w': image.width,
+            'h': image.height,
+        })
+        self.assertEqual(media.kw, {})
+
+    def test_to_dict(self):
+        media = self._FakeMedia('1', self._FakeImage('image', 'content'))
+        self.assertEqual(media.to_dict(self._FakeTwitterData), {
+            'media_id_str': '1',
+            'media_id': 1,
+            'size': 1,
+            'expires_after_secs': 60,
+            'image': {
+                'image_type': 'image/jpeg',
+                'h': 1,
+                'w': 1,
+            },
+        })
+
+
 class TestFakeTwitterData(TestCase):
     _FakeTwitterData = from_fake_twitter('FakeTwitterData')
+    _FakeMedia = from_fake_twitter('FakeMedia')
+    _FakeImage = from_fake_twitter('FakeImage')
     _now = datetime(2014, 3, 11, 10, 48, 22, 687699)
 
     def test_next_tweet_id(self):
@@ -404,6 +458,14 @@ class TestFakeTwitterData(TestCase):
         user1 = twitter.new_user('fakeuser', 'Fake User')
 
         self.assertEqual(id1, user1.id_str)
+
+    def test_next_media_id(self):
+        twitter = self._FakeTwitterData()
+
+        id1 = twitter.next_media_id
+        media1 = twitter.new_media(self._FakeImage('img1', 'content'))
+
+        self.assertEqual(id1, media1.media_id_str)
 
     def test_broadcast_follow(self):
         twitter = self._FakeTwitterData()
@@ -512,6 +574,14 @@ class TestFakeTwitterData(TestCase):
         twitter.del_dm('1')
         self.assertEqual(twitter.get_dm('1'), None)
 
+    def test_del_media(self):
+        twitter = self._FakeTwitterData()
+        media = twitter.add_media('1', self._FakeImage('img1', 'content'))
+
+        self.assertEqual(twitter.get_media('1'), media)
+        twitter.del_media('1')
+        self.assertEqual(twitter.get_media('1'), None)
+
     def test_del_follow(self):
         twitter = self._FakeTwitterData()
         twitter.add_follow('1', '2')
@@ -574,6 +644,11 @@ class TestFakeTwitterData(TestCase):
         self.assertEqual(user.screen_name, 'fakeuser')
         self.assertEqual(user.name, 'Fake User')
 
+    def test_new_media(self):
+        twitter = self._FakeTwitterData()
+        media = twitter.new_media(self._FakeImage('img', 'content', size=10))
+        self.assertEqual(media.size, 10)
+
 
 class TestFakeTwitter(TestCase):
     _FakeTwitter = from_fake_twitter('FakeTwitter')
@@ -628,6 +703,7 @@ class TestFakeTwitterAPI(TestCase):
     _FakeTwitterData = from_fake_twitter('FakeTwitterData')
     _FakeTwitterAPI = from_fake_twitter('FakeTwitterAPI')
     _TwitterAPIError = from_fake_twitter('TwitterAPIError')
+    _FakeImage = from_fake_twitter('FakeImage')
 
     def _build_uri(self, base, path, params=None):
         uri = '%s%s' % (base, path)
@@ -873,6 +949,19 @@ class TestFakeTwitterAPI(TestCase):
         self.assertEqual(twitter.tweets.keys(), [tweet['id_str']])
 
     # TODO: More tests for fake statuses_update()
+
+    def test_media_upload(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        image = self._FakeImage('image', 'content')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        media = api.media_upload(image, additional_owners=[1, 2])
+        self.assertEqual(1, media['size'])
+        self.assertEqual(60, media['expires_after_secs'])
+        self.assertEqual(1, media['image']['h'], media['image']['w'])
+        self.assertEqual('image/jpeg', media['image']['image_type'])
+        self.assertEqual(twitter.media.keys(), [media['media_id_str']])
 
     # TODO: Tests for fake statuses_retweet()
     # TODO: Tests for fake statuses_update_with_media()

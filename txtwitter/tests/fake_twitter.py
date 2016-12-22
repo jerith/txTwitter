@@ -10,7 +10,7 @@ from txtwitter.error import TwitterAPIError
 from txtwitter.tests.fake_agent import FakeResponse
 from txtwitter.twitter import (
     TWITTER_API_URL, TWITTER_STREAM_URL, TWITTER_USERSTREAM_URL,
-    TwitterClient)
+    TWITTER_UPLOAD_URL, TwitterClient)
 
 
 USER_MENTION_RE = re.compile(r'@[a-zA-Z0-9_]+')
@@ -45,6 +45,19 @@ def extract_entities(twitter_data, text):
         'user_mentions': extract_user_mentions(twitter_data, text),
         # TODO: More entities
     }
+
+
+class FakeImage(object):
+    def __init__(self, name, file_content, size=1, height=1, width=1):
+        self.name = name
+        self.file_content = file_content
+
+        self.size = size
+        self.height = height
+        self.width = width
+
+    def read(self):
+        return self.file_content
 
 
 class FakeStream(object):
@@ -244,6 +257,37 @@ class FakeUser(object):
         return user_dict
 
 
+class FakeMedia(object):
+    def __init__(self, media_id_str, fake_image, **kw):
+        self.media_id_str = media_id_str
+        self.size = fake_image.size
+        self.expires_after_secs = 60
+        self.image = {
+            'image_type': 'image/jpeg',
+            'w': fake_image.width,
+            'h': fake_image.height,
+        }
+
+        self.kw = kw
+
+    def to_dict(self, twitter_data):
+        media_dict = {
+            'media_id_str': self.media_id_str,
+            'size': self.size,
+            'expires_after_secs': self.expires_after_secs,
+            'image': self.image,
+            # Defaults
+        }
+        # Calculated values
+        media_dict.update({
+            'media_id': int(media_dict['media_id_str']),
+        })
+        # Provided keyword args can override any of the above
+        media_dict.update(self.kw)
+
+        return media_dict
+
+
 class FakeFollow(object):
     def __init__(self, source_id, target_id, notify=False, **kw):
         self.source_id = source_id
@@ -282,9 +326,11 @@ class FakeTwitterData(object):
         self.tweets = {}
         self.follows = {}
         self.streams = {}
+        self.media = {}
         self._next_dm_id = 1000
         self._next_tweet_id = 1000
         self._next_user_id = 1000
+        self._next_media_id = 1000
 
     @property
     def next_tweet_id(self):
@@ -297,6 +343,10 @@ class FakeTwitterData(object):
     @property
     def next_user_id(self):
         return str(self._next_user_id)
+
+    @property
+    def next_media_id(self):
+        return str(self._next_media_id)
 
     def streams_accepting(self, message_type, data):
         return (stream for stream in self.streams.itervalues()
@@ -340,6 +390,9 @@ class FakeTwitterData(object):
     def get_user(self, id_str):
         return self.users.get(id_str)
 
+    def get_media(self, media_id_str):
+        return self.media.get(media_id_str)
+
     def get_follow(self, source_id, target_id):
         return self.follows.get((source_id, target_id))
 
@@ -360,6 +413,11 @@ class FakeTwitterData(object):
         self.users[user.id_str] = user
         return user
 
+    def add_media(self, *args, **kw):
+        media = FakeMedia(*args, **kw)
+        self.media[media.media_id_str] = media
+        return media
+
     def add_follow(self, source_id, target_id):
         key = (source_id, target_id)
 
@@ -379,6 +437,9 @@ class FakeTwitterData(object):
 
     def del_user(self, id_str):
         self.users.pop(id_str)
+
+    def del_media(self, media_id_str):
+        self.media.pop(media_id_str)
 
     def del_follow(self, source_id, target_id):
         key = (source_id, target_id)
@@ -407,6 +468,11 @@ class FakeTwitterData(object):
         self._next_user_id += 10
         return user
 
+    def new_media(self, fake_image, *args, **kw):
+        media = self.add_media(self.next_media_id, fake_image, *args, **kw)
+        self._next_media_id += 10
+        return media
+
     def get_user_by_screen_name(self, screen_name):
         for user in self.users.itervalues():
             if user.screen_name == screen_name:
@@ -431,16 +497,22 @@ class FakeTwitterData(object):
 class FakeTwitterClient(TwitterClient):
     def __init__(self, fake_twitter, user_id_str,
                  api_url=TWITTER_API_URL, stream_url=TWITTER_STREAM_URL,
-                 userstream_url=TWITTER_USERSTREAM_URL):
+                 userstream_url=TWITTER_USERSTREAM_URL,
+                 upload_url=TWITTER_UPLOAD_URL):
         self._fake_twitter = fake_twitter
         self._fake_twitter_user_id_str = user_id_str
         self._api_url_base = api_url
         self._stream_url_base = stream_url
         self._userstream_url_base = userstream_url
+        self._upload_url = upload_url
 
     def _make_request(self, method, uri, body_parameters=None):
         return self._fake_twitter.dispatch(
             self._fake_twitter_user_id_str, method, uri, body_parameters)
+
+    def _upload_media(self, uri, media, params):
+        return self._fake_twitter.dispatch_multipart(
+            self._fake_twitter_user_id_str, uri, media, params)
 
     def _parse_response(self, response):
         return response
@@ -448,11 +520,13 @@ class FakeTwitterClient(TwitterClient):
 
 class FakeTwitter(object):
     def __init__(self, api_url=TWITTER_API_URL, stream_url=TWITTER_STREAM_URL,
-                 userstream_url=TWITTER_USERSTREAM_URL):
+                 userstream_url=TWITTER_USERSTREAM_URL,
+                 upload_url=TWITTER_UPLOAD_URL):
         self.urls = {
             'api': api_url,
             'stream': stream_url,
             'userstream': userstream_url,
+            'upload': upload_url,
         }
         self.twitter_data = FakeTwitterData()
 
@@ -463,7 +537,8 @@ class FakeTwitter(object):
         return FakeTwitterClient(
             self, user_id_str, api_url=self.urls['api'],
             stream_url=self.urls['stream'],
-            userstream_url=self.urls['userstream'])
+            userstream_url=self.urls['userstream'],
+            upload_url=self.urls['upload'])
 
     def get_api_method(self, user, uri):
         uri = uri.split('?')[0]
@@ -495,6 +570,10 @@ class FakeTwitter(object):
 
         method = self.get_api_method(user, uri)
         return maybeDeferred(method, **params)
+
+    def dispatch_multipart(self, user, uri, body, params):
+        method = self.get_api_method(user, uri)
+        return maybeDeferred(method, body, params)
 
 
 def fake_api(path, host_prefix='api'):
@@ -629,18 +708,24 @@ class FakeTwitterAPI(object):
     @fake_api('statuses/update.json')
     def statuses_update(self, status, in_reply_to_status_id=None, lat=None,
                         long=None, place_id=None, display_coordinates=None,
-                        trim_user=None):
+                        trim_user=None, media_ids=None):
         if set([lat, long, place_id, display_coordinates]) != set([None]):
             raise NotImplementedError("Unsupported parameter")
         tweet = self._twitter_data.new_tweet(
-            status, self._user_id_str, reply_to=in_reply_to_status_id)
+            status, self._user_id_str, reply_to=in_reply_to_status_id,
+            media_ids=media_ids)
         return tweet.to_dict(self._twitter_data, trim_user=trim_user)
 
     @fake_api('statuses/retweet.json')
     def statuses_retweet(self, id, trim_user=None):
         raise NotImplementedError()
 
-    # TODO: Implement statuses_update_with_media()
+    @fake_api('media/upload.json')
+    def media_upload(self, media, additional_owners=None):
+        media = self._twitter_data.new_media(
+            media, additional_owners=additional_owners)
+        return media.to_dict(self._twitter_data)
+
     # TODO: Implement statuses_oembed()
     # TODO: Implement statuses_retweeters_ids()
 
