@@ -409,7 +409,6 @@ class TestFakeMedia(TestCase):
             'w': image.width,
             'h': image.height,
         })
-        self.assertEqual(media.kw, {})
 
     def test_to_dict(self):
         media = self._FakeMedia('1', self._FakeImage('image', 'content'))
