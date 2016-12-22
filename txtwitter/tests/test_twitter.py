@@ -4,6 +4,7 @@ from twisted.internet.defer import Deferred, inlineCallbacks
 from twisted.trial.unittest import TestCase
 
 from txtwitter.tests.fake_agent import FakeAgent, FakeResponse
+from txtwitter.tests.fake_twitter import FakeImage
 
 
 def from_twitter(name):
@@ -666,15 +667,9 @@ class TestTwitterClient(TestCase):
 
     @inlineCallbacks
     def test_media_upload(self):
-        class FakeImage():
-            name = 'image'
-
-            def read(self):
-                return 'raw_binary_content'
-
         agent, client = self._agent_and_TwitterClient()
         uri = 'https://upload.twitter.com/1.1/media/upload.json'
-        media = FakeImage()
+        media = FakeImage('image', 'raw_binary_content')
         response_dict = {
             'media_id': 123,
             'media_id_string': '123',
