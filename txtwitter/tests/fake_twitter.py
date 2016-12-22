@@ -268,8 +268,6 @@ class FakeMedia(object):
             'h': fake_image.height,
         }
 
-        self.kw = kw
-
     def to_dict(self, twitter_data):
         media_dict = {
             'media_id_str': self.media_id_str,
@@ -282,8 +280,6 @@ class FakeMedia(object):
         media_dict.update({
             'media_id': int(media_dict['media_id_str']),
         })
-        # Provided keyword args can override any of the above
-        media_dict.update(self.kw)
 
         return media_dict
 
