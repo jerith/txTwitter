@@ -215,7 +215,10 @@ def set_list_param(params, name, value, min_len=None, max_len=None):
             "Parameter '%s' must not be longer than %r, got %r." % (
                 name, max_len, value))
 
-    params[name] = value
+    list_str = ''
+    for item in value:
+        list_str += '%s,' % item
+    set_str_param(params, name, list_str)
 
 
 class TwitterClient(object):

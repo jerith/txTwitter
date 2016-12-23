@@ -220,7 +220,7 @@ class TestParamHelpers(TestCase):
         """
         params = {}
         self._set_list_param(params, 'list', [1, 2, 3])
-        self.assertEqual(params, {'list': [1, 2, 3]})
+        self.assertEqual(params, {'list': '1,2,3,'})
 
     def test_set_list_param_min_len(self):
         """
@@ -259,10 +259,10 @@ class TestParamHelpers(TestCase):
         self._set_list_param(params, 'frozenset', frozenset({1, 2, 3}))
         self._set_list_param(params, 'string', 'foo')
         self.assertEqual(params, {
-            'set': [1, 2, 3],
-            'tuple': [1, 2, 3],
-            'frozenset': [1, 2, 3],
-            'string': ['f', 'o', 'o'],
+            'set': '1,2,3,',
+            'tuple': '1,2,3,',
+            'frozenset': '1,2,3,',
+            'string': 'f,o,o,',
         })
 
 
@@ -615,7 +615,7 @@ class TestTwitterClient(TestCase):
             'place_id': 'abc123',
             'display_coordinates': 'true',
             'trim_user': 'true',
-            'media_ids': '[1, 2]',
+            'media_ids': '1,2,',
         }
         agent.add_expected_request(
             'POST', uri, expected_params, self._resp_json(response_dict))
@@ -685,7 +685,7 @@ class TestTwitterClient(TestCase):
             '--txtwitter\r\n'
             'Content-Disposition: form-data, name=additional_owners\r\n'
             '\r\n'
-            '[1, 2]\r\n'
+            '1,2,\r\n'
             '--txtwitter\r\n'
             'Content-Disposition: form-data; name=media; filename=image\r\n'
             'Content-Type: application/octet-stream\r\n'
