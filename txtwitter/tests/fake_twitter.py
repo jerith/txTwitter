@@ -509,7 +509,7 @@ class FakeTwitterClient(TwitterClient):
     def _upload_media(self, uri, media, params):
         return self._fake_twitter.dispatch_multipart(
             self._fake_twitter_user_id_str,
-            self.make_uri(self._upload_url, uri), media, params)
+            self._make_uri(self._upload_url, uri), media, params)
 
     def _parse_response(self, response):
         return response
