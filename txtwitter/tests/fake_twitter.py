@@ -717,7 +717,7 @@ class FakeTwitterAPI(object):
     def statuses_retweet(self, id, trim_user=None):
         raise NotImplementedError()
 
-    @fake_api('media/upload.json')
+    @fake_api('media/upload.json', host_prefix='upload')
     def media_upload(self, media, additional_owners=None):
         media = self._twitter_data.new_media(
             media, additional_owners=additional_owners)
