@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 from urllib import urlencode
 
+from twisted.internet.defer import inlineCallbacks
 from twisted.protocols.basic import LineOnlyReceiver
 from twisted.trial.unittest import TestCase
 
@@ -652,6 +653,8 @@ class TestFakeTwitterData(TestCase):
 class TestFakeTwitter(TestCase):
     _FakeTwitter = from_fake_twitter('FakeTwitter')
     _FakeTwitterClient = from_fake_twitter('FakeTwitterClient')
+    _FakeMedia = from_fake_twitter('FakeMedia')
+    _FakeImage = from_fake_twitter('FakeImage')
 
     def test_get_client(self):
         twitter = self._FakeTwitter()
@@ -665,9 +668,30 @@ class TestFakeTwitter(TestCase):
         self.assertEqual(self._FakeTwitterClient, type(client))
         self.assertEqual(client._fake_twitter_user_id_str, '42')
 
+    @inlineCallbacks
+    def test_dispatch_multipart(self):
+        twitter = self._FakeTwitter()
+        client = twitter.get_client('42')
+        image = self._FakeImage('img', 'content')
+        response = yield twitter.dispatch_multipart(
+            client._fake_twitter_user_id_str,
+            'https://upload.twitter.com/1.1/media/upload.json',
+            image, [])
+
+        # We expect the media in the response to contain FakeMedia defaults
+        self.assertEqual(response, {
+            'media_id': 1000,
+            'media_id_str': '1000',
+            'image': {'image_type': 'image/jpeg', 'h': 1, 'w': 1},
+            'additional_owners': [],
+            'expires_after_secs': 60,
+            'size': 1,
+        })
+
 
 class TestFakeTwitterClient(TestCase):
     _FakeTwitter = from_fake_twitter('FakeTwitter')
+    _FakeImage = from_fake_twitter('FakeImage')
 
     def _FakeTwitterClient(self, user_id_str=None, fake_twitter=None):
         if fake_twitter is None:
@@ -686,6 +710,22 @@ class TestFakeTwitterClient(TestCase):
         client = self._FakeTwitterClient(fake_twitter=twitter)
         tweet = self.successResultOf(client.statuses_show('1'))
         self.assertEqual(tweet['text'], 'hello')
+
+    @inlineCallbacks
+    def test_upload_media(self):
+        client = self._FakeTwitterClient()
+        image = self._FakeImage('img', 'content')
+        media = yield client._upload_media('media/upload.json', image, [])
+
+        # We expect the media in the response to contain FakeMedia defaults
+        self.assertEqual(media, {
+            'media_id': 1000,
+            'media_id_str': '1000',
+            'image': {'image_type': 'image/jpeg', 'h': 1, 'w': 1},
+            'additional_owners': [],
+            'expires_after_secs': 60,
+            'size': 1,
+        })
 
 
 class FakeTwitterStreamProtocol(LineOnlyReceiver):
