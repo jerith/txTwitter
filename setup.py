@@ -10,7 +10,7 @@ def readme():
 
 setup(
     name="txTwitter",
-    version="0.1.6a",
+    version="0.1.6",
     url='https://github.com/jerith/txTwitter',
     license='MIT',
     description="A Twisted-based client library for Twitter's API.",
