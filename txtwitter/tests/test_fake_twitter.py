@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 from urllib import urlencode
 
+from twisted.internet.defer import inlineCallbacks
 from twisted.protocols.basic import LineOnlyReceiver
 from twisted.trial.unittest import TestCase
 
@@ -374,8 +375,61 @@ class TestFakeFollow(TestCase):
         })
 
 
+class TestFakeImage(TestCase):
+    _FakeImage = from_fake_twitter('FakeImage')
+
+    def test_create_fake_image_defaults(self):
+        image = self._FakeImage('image', 'content')
+        self.assertEqual(image.name, 'image')
+        self.assertEqual(image.height, image.width, 1)
+        self.assertEqual(image.size, 1)
+
+    def test_create_fake_image_params(self):
+        image = self._FakeImage('image', 'content', size=2, height=2, width=2)
+        self.assertEqual(image.height, image.width, 2)
+        self.assertEqual(image.size, 2)
+
+    def test_read(self):
+        image = self._FakeImage('image', 'content')
+        self.assertEqual(image.read(), 'content')
+
+
+class TestFakeMedia(TestCase):
+    _FakeTwitterData = from_fake_twitter('FakeTwitterData')
+    _FakeMedia = from_fake_twitter('FakeMedia')
+    _FakeImage = from_fake_twitter('FakeImage')
+
+    def test_create_fake_media(self):
+        image = self._FakeImage('image', 'content')
+        media = self._FakeMedia('1', image)
+        self.assertEqual(media.media_id_str, '1')
+        self.assertEqual(media.size, image.size)
+        self.assertEqual(media.expires_after_secs, 60)
+        self.assertEqual(media.image, {
+            'image_type': 'image/jpeg',
+            'w': image.width,
+            'h': image.height,
+        })
+
+    def test_to_dict(self):
+        media = self._FakeMedia('1', self._FakeImage('image', 'content'))
+        self.assertEqual(media.to_dict(self._FakeTwitterData), {
+            'media_id_str': '1',
+            'media_id': 1,
+            'size': 1,
+            'expires_after_secs': 60,
+            'image': {
+                'image_type': 'image/jpeg',
+                'h': 1,
+                'w': 1,
+            },
+        })
+
+
 class TestFakeTwitterData(TestCase):
     _FakeTwitterData = from_fake_twitter('FakeTwitterData')
+    _FakeMedia = from_fake_twitter('FakeMedia')
+    _FakeImage = from_fake_twitter('FakeImage')
     _now = datetime(2014, 3, 11, 10, 48, 22, 687699)
 
     def test_next_tweet_id(self):
@@ -404,6 +458,14 @@ class TestFakeTwitterData(TestCase):
         user1 = twitter.new_user('fakeuser', 'Fake User')
 
         self.assertEqual(id1, user1.id_str)
+
+    def test_next_media_id(self):
+        twitter = self._FakeTwitterData()
+
+        id1 = twitter.next_media_id
+        media1 = twitter.new_media(self._FakeImage('img1', 'content'))
+
+        self.assertEqual(id1, media1.media_id_str)
 
     def test_broadcast_follow(self):
         twitter = self._FakeTwitterData()
@@ -512,6 +574,14 @@ class TestFakeTwitterData(TestCase):
         twitter.del_dm('1')
         self.assertEqual(twitter.get_dm('1'), None)
 
+    def test_del_media(self):
+        twitter = self._FakeTwitterData()
+        media = twitter.add_media('1', self._FakeImage('img1', 'content'))
+
+        self.assertEqual(twitter.get_media('1'), media)
+        twitter.del_media('1')
+        self.assertEqual(twitter.get_media('1'), None)
+
     def test_del_follow(self):
         twitter = self._FakeTwitterData()
         twitter.add_follow('1', '2')
@@ -574,10 +644,17 @@ class TestFakeTwitterData(TestCase):
         self.assertEqual(user.screen_name, 'fakeuser')
         self.assertEqual(user.name, 'Fake User')
 
+    def test_new_media(self):
+        twitter = self._FakeTwitterData()
+        media = twitter.new_media(self._FakeImage('img', 'content', size=10))
+        self.assertEqual(media.size, 10)
+
 
 class TestFakeTwitter(TestCase):
     _FakeTwitter = from_fake_twitter('FakeTwitter')
     _FakeTwitterClient = from_fake_twitter('FakeTwitterClient')
+    _FakeMedia = from_fake_twitter('FakeMedia')
+    _FakeImage = from_fake_twitter('FakeImage')
 
     def test_get_client(self):
         twitter = self._FakeTwitter()
@@ -591,9 +668,30 @@ class TestFakeTwitter(TestCase):
         self.assertEqual(self._FakeTwitterClient, type(client))
         self.assertEqual(client._fake_twitter_user_id_str, '42')
 
+    @inlineCallbacks
+    def test_dispatch_multipart(self):
+        twitter = self._FakeTwitter()
+        client = twitter.get_client('42')
+        image = self._FakeImage('img', 'content')
+        response = yield twitter.dispatch_multipart(
+            client._fake_twitter_user_id_str,
+            'https://upload.twitter.com/1.1/media/upload.json',
+            image, [])
+
+        # We expect the media in the response to contain FakeMedia defaults
+        self.assertEqual(response, {
+            'media_id': 1000,
+            'media_id_str': '1000',
+            'image': {'image_type': 'image/jpeg', 'h': 1, 'w': 1},
+            'additional_owners': [],
+            'expires_after_secs': 60,
+            'size': 1,
+        })
+
 
 class TestFakeTwitterClient(TestCase):
     _FakeTwitter = from_fake_twitter('FakeTwitter')
+    _FakeImage = from_fake_twitter('FakeImage')
 
     def _FakeTwitterClient(self, user_id_str=None, fake_twitter=None):
         if fake_twitter is None:
@@ -613,6 +711,22 @@ class TestFakeTwitterClient(TestCase):
         tweet = self.successResultOf(client.statuses_show('1'))
         self.assertEqual(tweet['text'], 'hello')
 
+    @inlineCallbacks
+    def test_upload_media(self):
+        client = self._FakeTwitterClient()
+        image = self._FakeImage('img', 'content')
+        media = yield client._upload_media('media/upload.json', image, [])
+
+        # We expect the media in the response to contain FakeMedia defaults
+        self.assertEqual(media, {
+            'media_id': 1000,
+            'media_id_str': '1000',
+            'image': {'image_type': 'image/jpeg', 'h': 1, 'w': 1},
+            'additional_owners': [],
+            'expires_after_secs': 60,
+            'size': 1,
+        })
+
 
 class FakeTwitterStreamProtocol(LineOnlyReceiver):
     def __init__(self, delegate):
@@ -628,6 +742,7 @@ class TestFakeTwitterAPI(TestCase):
     _FakeTwitterData = from_fake_twitter('FakeTwitterData')
     _FakeTwitterAPI = from_fake_twitter('FakeTwitterAPI')
     _TwitterAPIError = from_fake_twitter('TwitterAPIError')
+    _FakeImage = from_fake_twitter('FakeImage')
 
     def _build_uri(self, base, path, params=None):
         uri = '%s%s' % (base, path)
@@ -873,6 +988,19 @@ class TestFakeTwitterAPI(TestCase):
         self.assertEqual(twitter.tweets.keys(), [tweet['id_str']])
 
     # TODO: More tests for fake statuses_update()
+
+    def test_media_upload(self):
+        twitter = self._FakeTwitterData()
+        twitter.add_user('1', 'fakeuser', 'Fake User')
+        image = self._FakeImage('image', 'content')
+
+        api = self._FakeTwitterAPI(twitter, '1')
+        media = api.media_upload(image, additional_owners=[1, 2])
+        self.assertEqual(1, media['size'])
+        self.assertEqual(60, media['expires_after_secs'])
+        self.assertEqual(1, media['image']['h'], media['image']['w'])
+        self.assertEqual('image/jpeg', media['image']['image_type'])
+        self.assertEqual(twitter.media.keys(), [media['media_id_str']])
 
     # TODO: Tests for fake statuses_retweet()
     # TODO: Tests for fake statuses_update_with_media()

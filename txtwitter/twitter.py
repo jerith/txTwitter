@@ -16,6 +16,7 @@ from txtwitter.streamservice import TwitterStreamService
 TWITTER_API_URL = 'https://api.twitter.com/1.1/'
 TWITTER_STREAM_URL = 'https://stream.twitter.com/1.1/'
 TWITTER_USERSTREAM_URL = 'https://userstream.twitter.com/1.1/'
+TWITTER_UPLOAD_URL = 'https://upload.twitter.com/1.1/'
 
 
 def _extract_partial_response(failure):
@@ -171,6 +172,55 @@ def set_int_param(params, name, value, min=None, max=None):
     params[name] = str(value)
 
 
+def set_list_param(params, name, value, min_len=None, max_len=None):
+    """
+    Set a list parameter if applicable.
+
+    :param dict params: A dict containing API call parameters.
+
+    :param str name: The name of the parameter to set.
+
+    :param list value:
+        The value of the parameter. If ``None``, the field will not be set. If
+        an instance of ``set``, ``tuple``, or type that can be turned into
+        a ``list``, the relevant field will be set. If ``dict``, will raise
+        ``ValueError``. Any other value will raise a ``ValueError``.
+
+    :param int min_len:
+        If provided, values shorter than this will raise ``ValueError``.
+
+    :param int max_len:
+        If provided, values longer than this will raise ``ValueError``.
+    """
+    if value is None:
+        return
+
+    if type(value) is dict:
+        raise ValueError(
+            "Parameter '%s' cannot be a dict." % name)
+
+    try:
+        value = list(value)
+    except:
+        raise ValueError(
+            "Parameter '%s' must be a list (or a type that can be turned into"
+            "a list) or None, got %r." % (name, value))
+
+    if min_len is not None and len(value) < min_len:
+        raise ValueError(
+            "Parameter '%s' must not be shorter than %r, got %r." % (
+                name, min_len, value))
+    if max_len is not None and len(value) > max_len:
+        raise ValueError(
+            "Parameter '%s' must not be longer than %r, got %r." % (
+                name, max_len, value))
+
+    list_str = ''
+    for item in value:
+        list_str += '%s,' % item
+    set_str_param(params, name, list_str)
+
+
 class TwitterClient(object):
     """
     TODO: Document this.
@@ -179,7 +229,8 @@ class TwitterClient(object):
 
     def __init__(self, token_key, token_secret, consumer_key, consumer_secret,
                  api_url=TWITTER_API_URL, stream_url=TWITTER_STREAM_URL,
-                 userstream_url=TWITTER_USERSTREAM_URL, agent=None):
+                 userstream_url=TWITTER_USERSTREAM_URL,
+                 upload_url=TWITTER_UPLOAD_URL, agent=None):
         self._token_key = token_key
         self._token_secret = token_secret
         self._consumer_key = consumer_key
@@ -187,6 +238,7 @@ class TwitterClient(object):
         self._api_url_base = api_url
         self._stream_url_base = stream_url
         self._userstream_url_base = userstream_url
+        self._upload_url_base = upload_url
         if agent is None:
             agent = Agent(self.reactor)
         self._agent = agent
@@ -250,6 +302,45 @@ class TwitterClient(object):
     def _get_userstream(self, resource, parameters):
         uri = self._make_uri(self._userstream_url_base, resource, parameters)
         return self._make_request('GET', uri)
+
+    def _upload_media(self, uri, media, params):
+        boundary = 'txtwitter'
+        file_field = 'media'
+
+        body = ''
+        if params:
+            for key, value in params.items():
+                body += '--%s\r\n' % boundary
+                body += 'Content-Disposition: form-data, name=%s\r\n' % key
+                body += '\r\n'
+                body += str(value)
+                body += '\r\n'
+
+        body += '--%s\r\n' % boundary
+        body += 'Content-Disposition: form-data; name=%s; filename=%s\r\n' % (
+            file_field, media.name)
+        body += 'Content-Type: application/octet-stream\r\n'
+        body += '\r\n'
+        body += media.read()
+        body += '\r\n--%s--\r\n' % boundary
+
+        client = oauth1.Client(
+            self._consumer_key, client_secret=self._consumer_secret,
+            resource_owner_key=self._token_key,
+            resource_owner_secret=self._token_secret, encoding='utf-8',
+            decoding='utf-8')
+        uri = self._make_uri(self._upload_url_base, uri)
+        headers = {
+            'Content-Type': 'multipart/form-data; boundary=%s' % boundary,
+        }
+        uri, headers, _ = client.sign(uri, http_method='POST', headers=headers)
+        headers = Headers(dict((k, [v]) for k, v in headers.items()))
+        body_producer = FileBodyProducer(StringIO(body))
+
+        d = self._agent.request('POST', uri, headers, body_producer)
+        d.addCallback(self._handle_error)
+        d.addCallback(self._parse_response)
+        return d
 
     # Timelines
 
@@ -490,7 +581,7 @@ class TwitterClient(object):
 
     def statuses_update(self, status, in_reply_to_status_id=None, lat=None,
                         long=None, place_id=None, display_coordinates=None,
-                        trim_user=None):
+                        trim_user=None, media_ids=None):
         """
         Posts a tweet.
 
@@ -539,6 +630,11 @@ class TwitterClient(object):
             When set to ``True``, the return value's user object includes only
             the status author's numerical ID.
 
+        :param list media_ids:
+            A list of images previously uploaded to Twitter (referenced by
+            their ``media_id``) that are to be embedded in the tweet. Maximum
+            of four images.
+
         :returns:
             A tweet dict containing the posted tweet.
         """
@@ -550,6 +646,7 @@ class TwitterClient(object):
         set_str_param(params, 'place_id', place_id)
         set_bool_param(params, 'display_coordinates', display_coordinates)
         set_bool_param(params, 'trim_user', trim_user)
+        set_list_param(params, 'media_ids', media_ids, max_len=4)
         return self._post_api('statuses/update.json', params)
 
     def statuses_retweet(self, id, trim_user=None):
@@ -572,6 +669,28 @@ class TwitterClient(object):
         params = {'id': id}
         set_bool_param(params, 'trim_user', trim_user)
         return self._post_api('statuses/retweet.json', params)
+
+    def media_upload(self, media, additional_owners=None):
+        """
+        Uploads an image to Twitter for later embedding in tweets.
+
+        https://dev.twitter.com/rest/reference/post/media/upload
+
+        :param file media:
+            The image file to upload (see the API docs for limitations).
+
+        :param list additional_owners:
+            A list of Twitter users that will be able to access the uploaded
+            file and embed it in their tweets (maximum 100 users).
+
+        :returns:
+            A dict containing information about the file uploaded. (Contains
+            the media id needed to embed the image in the ``media_id`` field).
+        """
+        params = {}
+        set_list_param(
+            params, 'additional_owners', additional_owners, max_len=100)
+        return self._upload_media('media/upload.json', media, params)
 
     # TODO: Implement statuses_update_with_media()
     # TODO: Implement statuses_oembed()

@@ -4,6 +4,7 @@ from twisted.internet.defer import Deferred, inlineCallbacks
 from twisted.trial.unittest import TestCase
 
 from txtwitter.tests.fake_agent import FakeAgent, FakeResponse
+from txtwitter.tests.fake_twitter import FakeImage
 
 
 def from_twitter(name):
@@ -19,6 +20,7 @@ class TestParamHelpers(TestCase):
     _set_str_param = from_twitter('set_str_param')
     _set_float_param = from_twitter('set_float_param')
     _set_int_param = from_twitter('set_int_param')
+    _set_list_param = from_twitter('set_list_param')
 
     def test_set_bool_param_None(self):
         """
@@ -211,6 +213,57 @@ class TestParamHelpers(TestCase):
         (and cannot be turned into one) or ``None``.
         """
         self.assertRaises(ValueError, self._set_int_param, {}, 42.5, True)
+
+    def test_set_list_param(self):
+        """
+        set_list_param() should set the param if the value is a ``list``.
+        """
+        params = {}
+        self._set_list_param(params, 'list', [1, 2, 3])
+        self.assertEqual(params, {'list': '1,2,3,'})
+
+    def test_set_list_param_min_len(self):
+        """
+        set_list_param() should raise a ``ValueError`` if the value is shorter
+        than ``min_len``.
+        """
+        self.assertRaises(
+            ValueError, self._set_list_param, {}, 'list', [1, 2], min_len=5)
+
+    def test_set_list_param_max_len(self):
+        """
+        set_list_param() should raise a ``ValueError`` if the value is longer
+        than ``max_len``.
+        """
+        self.assertRaises(
+            ValueError, self._set_list_param, {}, 'list', [1, 2], max_len=1)
+
+    def test_set_list_param_bad_types(self):
+        """
+        set_list_param() should raise a ``ValueError`` if the value is a
+        ``dict``, or any type that cannot be turned into a ``list``.
+        """
+        self.assertRaises(
+            ValueError, self._set_list_param, {}, 'dict', {'a': 1})
+        self.assertRaises(
+            ValueError, self._set_list_param, {}, 'int', 1)
+
+    def test_set_list_param_good_types(self):
+        """
+        set_list_param() should set the param if the value is a type that can
+        be turned into a ``list``.
+        """
+        params = {}
+        self._set_list_param(params, 'set', {1, 2, 3})
+        self._set_list_param(params, 'tuple', (1, 2, 3))
+        self._set_list_param(params, 'frozenset', frozenset({1, 2, 3}))
+        self._set_list_param(params, 'string', 'foo')
+        self.assertEqual(params, {
+            'set': '1,2,3,',
+            'tuple': '1,2,3,',
+            'frozenset': '1,2,3,',
+            'string': 'f,o,o,',
+        })
 
 
 class TestTwitterClient(TestCase):
@@ -562,12 +615,14 @@ class TestTwitterClient(TestCase):
             'place_id': 'abc123',
             'display_coordinates': 'true',
             'trim_user': 'true',
+            'media_ids': '1,2,',
         }
         agent.add_expected_request(
             'POST', uri, expected_params, self._resp_json(response_dict))
         resp = yield client.statuses_update(
             "Tweet!", in_reply_to_status_id="122", lat=-33.93, long=18.42,
-            place_id='abc123', display_coordinates=True, trim_user=True)
+            place_id='abc123', display_coordinates=True, trim_user=True,
+            media_ids=[1, 2])
         self.assertEqual(resp, response_dict)
 
     @inlineCallbacks
@@ -608,6 +663,39 @@ class TestTwitterClient(TestCase):
         agent.add_expected_request(
             'POST', uri, expected_params, self._resp_json(response_dict))
         resp = yield client.statuses_retweet("123", trim_user=True)
+        self.assertEqual(resp, response_dict)
+
+    @inlineCallbacks
+    def test_media_upload(self):
+        agent, client = self._agent_and_TwitterClient()
+        uri = 'https://upload.twitter.com/1.1/media/upload.json'
+        media = FakeImage('image', 'raw_binary_content')
+        response_dict = {
+            'media_id': 123,
+            'media_id_string': '123',
+            'size': 1,
+            'expires_after_secs': 60,
+            'image': {
+                'image_type': 'image/jpeg',
+                'h': 1,
+                'w': 1,
+            },
+        }
+        expected_body = (
+            '--txtwitter\r\n'
+            'Content-Disposition: form-data, name=additional_owners\r\n'
+            '\r\n'
+            '1,2,\r\n'
+            '--txtwitter\r\n'
+            'Content-Disposition: form-data; name=media; filename=image\r\n'
+            'Content-Type: application/octet-stream\r\n'
+            '\r\n'
+            'raw_binary_content\r\n'
+            '--txtwitter--\r\n'
+        )
+        agent.add_expected_multipart(
+            uri, expected_body, self._resp_json(response_dict))
+        resp = yield client.media_upload(media, additional_owners=[1, 2])
         self.assertEqual(resp, response_dict)
 
     # TODO: Tests for statuses_update_with_media()

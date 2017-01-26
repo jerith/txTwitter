@@ -49,6 +49,17 @@ class TestFakeAgent(TestCase):
             }), FileBodyProducer(StringIO('a=b')))
         self.assertEqual(resp, fake_resp)
 
+    @inlineCallbacks
+    def test_multipart_request(self):
+        agent = self._FakeAgent()
+        fake_resp = object()
+        agent.add_expected_multipart('foo', 'multipart_body', fake_resp)
+        resp = yield agent.request(
+            'POST', 'foo', Headers({
+                'Content-Type': ['multipart/form-data; boundary=txtwitter'],
+            }), FileBodyProducer(StringIO('multipart_body')))
+        self.assertEqual(resp, fake_resp)
+
     def test_response_static(self):
         resp = self._FakeResponse('foo', 400)
         body = self.successResultOf(readBody(resp))
